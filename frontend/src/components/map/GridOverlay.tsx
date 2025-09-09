@@ -14,6 +14,7 @@ interface GridOverlayProps {
   pointSize?: number;
   className?: string;
   zIndex?: number;
+  includedPoints?: number[];
 }
 
 /**
@@ -164,7 +165,8 @@ export const GridOverlay: React.FC<GridOverlayProps> = ({
   showUvIndex = false,
   pointSize = 1,
   className = '',
-  zIndex = 1
+  zIndex = 1,
+  includedPoints = []
 }) => {
   const { gridData, isLoading, error } = useGridData();
 
@@ -190,8 +192,13 @@ export const GridOverlay: React.FC<GridOverlayProps> = ({
     );
   }
 
-  // Sample the grid data based on sampleSize
-  const displayPoints = gridData.slice(0, sampleSize);
+  // Sample the grid data based on sampleSize and filter by includedPoints if provided
+  let displayPoints = gridData.slice(0, sampleSize);
+  
+  if (includedPoints.length > 0) {
+    // Filter to only show points that are in the includedPoints array
+    displayPoints = displayPoints.filter((_, index) => includedPoints.includes(index));
+  }
 
   return (
     <svg 

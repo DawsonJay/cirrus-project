@@ -12,6 +12,7 @@ export const BaseOverlay: React.FC<BaseOverlayProps & { children: React.ReactNod
   opacity = 1,
   visible = true,
   className = '',
+  allowPointerEvents = false,
   children
 }) => {
   if (!visible) return null;
@@ -27,7 +28,7 @@ export const BaseOverlay: React.FC<BaseOverlayProps & { children: React.ReactNod
         height: '100%',
         zIndex,
         opacity,
-        pointerEvents: 'none' // Allow clicks to pass through to map
+        pointerEvents: allowPointerEvents ? 'auto' : 'none' // Allow clicks to pass through to map
       }}
     >
       {children}

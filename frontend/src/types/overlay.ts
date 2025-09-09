@@ -3,6 +3,7 @@ export interface BaseOverlayProps {
   opacity?: number;
   visible?: boolean;
   className?: string;
+  allowPointerEvents?: boolean;
 }
 
 export interface OverlayData {

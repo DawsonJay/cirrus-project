@@ -2,13 +2,7 @@ import React from 'react';
 import { Box, Typography, CircularProgress, Alert } from '@mui/material';
 import { useGridData } from '../../contexts/GridDataContext';
 import GridOverlay from './GridOverlay';
-import { 
-  OverlayManager, 
-  TemperatureHeatMapOverlay,
-  WildfireAreasOverlay,
-  AffectedCitiesOverlay,
-  WeatherAlertsOverlay
-} from './overlays';
+import { OverlayManager } from './overlays';
 
 interface WeatherDataMapProps {
   sampleSize?: number;
@@ -97,7 +91,7 @@ const WeatherDataMap: React.FC<WeatherDataMapProps> = ({ sampleSize = 1000 }) =>
         }}
       />
 
-      {/* Overlay System - All overlays on top of map */}
+      {/* Overlay System - Ready for custom overlays */}
       <OverlayManager>
         {/* Base weather data grid */}
         <GridOverlay
@@ -107,30 +101,7 @@ const WeatherDataMap: React.FC<WeatherDataMapProps> = ({ sampleSize = 1000 }) =>
           zIndex={2}
         />
         
-        {/* Demo overlays - showing some by default */}
-        <TemperatureHeatMapOverlay
-          zIndex={3}
-          opacity={0.6}
-          visible={true} // Show temperature heat map
-        />
-        
-        <WildfireAreasOverlay
-          zIndex={4}
-          opacity={0.8}
-          visible={true} // Show wildfire areas
-        />
-        
-        <AffectedCitiesOverlay
-          zIndex={5}
-          opacity={1}
-          visible={true} // Show affected cities
-        />
-        
-        <WeatherAlertsOverlay
-          zIndex={6}
-          opacity={0.9}
-          visible={true} // Show weather alerts
-        />
+        {/* Add custom overlays here as needed */}
       </OverlayManager>
 
     </Box>
