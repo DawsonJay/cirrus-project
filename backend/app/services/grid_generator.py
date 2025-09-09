@@ -23,13 +23,13 @@ class GridGenerator:
             "max_lon": -52.0   # Eastern border
         }
         
-        # Major Canadian regions for naming
+        # Major Canadian regions for naming (updated with more accurate bounds)
         self.regions = {
             "BC": {"min_lat": 48.0, "max_lat": 60.0, "min_lon": -140.0, "max_lon": -114.0},
             "AB": {"min_lat": 49.0, "max_lat": 60.0, "min_lon": -120.0, "max_lon": -110.0},
             "SK": {"min_lat": 49.0, "max_lat": 60.0, "min_lon": -110.0, "max_lon": -102.0},
             "MB": {"min_lat": 49.0, "max_lat": 60.0, "min_lon": -102.0, "max_lon": -95.0},
-            "ON": {"min_lat": 42.0, "max_lat": 57.0, "min_lon": -95.0, "max_lon": -74.0},
+            "ON": {"min_lat": 41.0, "max_lat": 57.0, "min_lon": -95.0, "max_lon": -74.0},  # Extended south
             "QC": {"min_lat": 45.0, "max_lat": 63.0, "min_lon": -80.0, "max_lon": -57.0},
             "NB": {"min_lat": 44.0, "max_lat": 48.0, "min_lon": -69.0, "max_lon": -64.0},
             "NS": {"min_lat": 43.0, "max_lat": 47.0, "min_lon": -66.0, "max_lon": -60.0},
@@ -37,7 +37,11 @@ class GridGenerator:
             "NL": {"min_lat": 47.0, "max_lat": 60.0, "min_lon": -60.0, "max_lon": -52.0},
             "YT": {"min_lat": 60.0, "max_lat": 70.0, "min_lon": -141.0, "max_lon": -123.0},
             "NT": {"min_lat": 60.0, "max_lat": 78.0, "min_lon": -123.0, "max_lon": -95.0},
-            "NU": {"min_lat": 60.0, "max_lat": 84.0, "min_lon": -95.0, "max_lon": -60.0}
+            "NU": {"min_lat": 60.0, "max_lat": 84.0, "min_lon": -95.0, "max_lon": -60.0},
+            # Add some US border areas that might be in our grid
+            "US-Border": {"min_lat": 41.0, "max_lat": 49.0, "min_lon": -141.0, "max_lon": -95.0},
+            "Arctic": {"min_lat": 70.0, "max_lat": 84.0, "min_lon": -141.0, "max_lon": -60.0},
+            "Maritime": {"min_lat": 41.0, "max_lat": 50.0, "min_lon": -80.0, "max_lon": -52.0}
         }
     
     def generate_grid_coordinates(self) -> List[Tuple[float, float, str]]:

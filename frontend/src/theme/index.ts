@@ -1,6 +1,6 @@
 import { createTheme } from '@mui/material/styles';
-import { colors } from './colors.ts';
-import { spacing } from './spacing.ts';
+import { colors } from './colors';
+import { spacing } from './spacing';
 
 // Create Material-UI theme with Cirrus Project design system
 export const theme = createTheme({

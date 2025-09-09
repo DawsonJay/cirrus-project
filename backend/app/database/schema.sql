@@ -91,6 +91,7 @@ CREATE TABLE IF NOT EXISTS update_log (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_grid_spatial ON grid_points(latitude, longitude);
 CREATE INDEX IF NOT EXISTS idx_current_weather_grid ON current_weather(grid_point_id);

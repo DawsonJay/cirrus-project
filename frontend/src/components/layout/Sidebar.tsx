@@ -7,9 +7,10 @@ import {
   Tornado as TornadoIcon,
   Water as FloodIcon,
   Air as WindIcon,
+  Settings as SettingsIcon,
 } from '@mui/icons-material';
-import { colors, spacing } from '../../theme/index.ts';
-import { NavigationItem, SidebarProps } from '../../types/weather.ts';
+import { colors, spacing } from '../../theme';
+import { NavigationItem, SidebarProps } from '../../types/weather';
 
 const navigationItems: NavigationItem[] = [
   { id: 0, label: 'Dashboard', icon: DashboardIcon },
@@ -18,6 +19,7 @@ const navigationItems: NavigationItem[] = [
   { id: 3, label: 'Tornadoes', icon: TornadoIcon },
   { id: 4, label: 'Floods', icon: FloodIcon },
   { id: 5, label: 'Derechos', icon: WindIcon },
+  { id: 6, label: 'Recalibrate', icon: SettingsIcon },
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ selectedTab, onTabChange }) => {
@@ -92,7 +94,9 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedTab, onTabChange }) => {
                 })
               }}
             >
-              <IconComponent fontSize="medium" />
+              <Box sx={{ fontSize: '1.2rem' }}>
+                <IconComponent />
+              </Box>
             </Box>
           );
         })}

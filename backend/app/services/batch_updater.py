@@ -1,11 +1,11 @@
 """
-Batch updater for weather data using Open-Meteo API
+Production batch updater for weather data collection
 """
 
 import asyncio
 import logging
 from datetime import datetime
-from typing import List, Dict, Any, Tuple
+from typing import Dict, Any, List, Tuple
 from app.services.open_meteo_client import OpenMeteoClient
 from app.services.grid_generator import GridGenerator
 from app.database.connection import db_manager
@@ -13,23 +13,28 @@ from app.database.connection import db_manager
 logger = logging.getLogger(__name__)
 
 class BatchUpdater:
-    """Updates weather data for all grid points using batch API calls"""
+    """Production batch updater with reliable batch size of 200"""
     
-    def __init__(self, batch_size: int = 540):
+    def __init__(self, batch_size: int = 200):
         self.batch_size = batch_size
-        self.grid_generator = GridGenerator()
         self.open_meteo = OpenMeteoClient()
+        self.grid_generator = GridGenerator()
     
-    async def update_all_current_weather(self) -> Dict[str, Any]:
-        """Update current weather for all grid points"""
+    async def update_current_weather(self) -> Dict[str, Any]:
+        """Update current weather data for all grid points"""
+        logger.info("Starting current weather update")
+        
         try:
+            # Ensure grid is populated
+            await self._ensure_grid_populated()
+            
             # Get all coordinates
             coordinates = self.grid_generator.get_coordinates_for_batch()
             total_points = len(coordinates)
             
             logger.info(f"Updating current weather for {total_points} grid points")
             
-            # Split into batches if needed
+            # Split into batches
             batches = self._split_into_batches(coordinates)
             updated_count = 0
             failed_count = 0
@@ -45,71 +50,126 @@ class BatchUpdater:
                         # Update database
                         batch_updated = await self._update_current_weather_batch(batch_data, batch_coords)
                         updated_count += batch_updated
+                        logger.info(f"✅ Batch {i+1} successful: {batch_updated} updated")
                     else:
                         failed_count += len(batch_coords)
+                        logger.error(f"❌ Batch {i+1} failed: No data returned")
+                        # Stop on first failure to avoid wasting API calls
+                        break
                     
-                    # Add delay to respect rate limits (1 second between batches)
-                    if i < len(batches) - 1:  # Don't delay after the last batch
+                    # Add delay between batches
+                    if i < len(batches) - 1:
                         await asyncio.sleep(1)
                         
                 except Exception as e:
-                    logger.error(f"Failed to process batch {i+1}: {e}")
+                    logger.error(f"❌ Batch {i+1} failed: {e}")
                     failed_count += len(batch_coords)
+                    # Stop on first failure
+                    break
             
-            # Log update results
-            await self._log_update("current_weather", updated_count, failed_count, total_points)
+            success = failed_count == 0
+            logger.info(f"Current weather update complete: {updated_count} updated, {failed_count} failed")
             
             return {
-                "success": True,
+                "success": success,
                 "updated": updated_count,
                 "failed": failed_count,
-                "total": total_points
+                "total": total_points,
+                "batches_processed": i + 1,
+                "total_batches": len(batches)
             }
             
         except Exception as e:
             logger.error(f"Failed to update current weather: {e}")
             return {"success": False, "error": str(e)}
     
-    async def update_all_forecasts(self) -> Dict[str, Any]:
+    async def update_forecasts(self) -> Dict[str, Any]:
         """Update forecast data for all grid points"""
+        logger.info("Starting forecast update")
+        
         try:
+            # Ensure grid is populated
+            await self._ensure_grid_populated()
+            
+            # Get all coordinates
             coordinates = self.grid_generator.get_coordinates_for_batch()
             total_points = len(coordinates)
             
             logger.info(f"Updating forecasts for {total_points} grid points")
             
+            # Split into batches
             batches = self._split_into_batches(coordinates)
             updated_count = 0
             failed_count = 0
             
             for i, batch_coords in enumerate(batches):
-                logger.info(f"Processing forecast batch {i+1}/{len(batches)}")
+                logger.info(f"Processing forecast batch {i+1}/{len(batches)} ({len(batch_coords)} points)")
                 
                 try:
+                    # Make batch API call
                     batch_data = await self._get_batch_forecast(batch_coords)
                     
                     if batch_data:
+                        # Update database
                         batch_updated = await self._update_forecast_batch(batch_data, batch_coords)
                         updated_count += batch_updated
+                        logger.info(f"✅ Forecast batch {i+1} successful: {batch_updated} updated")
                     else:
                         failed_count += len(batch_coords)
+                        logger.error(f"❌ Forecast batch {i+1} failed: No data returned")
+                        # Stop on first failure
+                        break
+                    
+                    # Add delay between batches
+                    if i < len(batches) - 1:
+                        await asyncio.sleep(1)
                         
                 except Exception as e:
-                    logger.error(f"Failed to process forecast batch {i+1}: {e}")
+                    logger.error(f"❌ Forecast batch {i+1} failed: {e}")
                     failed_count += len(batch_coords)
+                    # Stop on first failure
+                    break
             
-            await self._log_update("forecast", updated_count, failed_count, total_points)
+            success = failed_count == 0
+            logger.info(f"Forecast update complete: {updated_count} updated, {failed_count} failed")
             
             return {
-                "success": True,
+                "success": success,
                 "updated": updated_count,
                 "failed": failed_count,
-                "total": total_points
+                "total": total_points,
+                "batches_processed": i + 1,
+                "total_batches": len(batches)
             }
             
         except Exception as e:
             logger.error(f"Failed to update forecasts: {e}")
             return {"success": False, "error": str(e)}
+    
+    async def _ensure_grid_populated(self):
+        """Ensure the grid is populated with coordinates"""
+        try:
+            with db_manager as conn:
+                # Check if grid is already populated
+                cursor = conn.execute("SELECT COUNT(*) as count FROM grid_points")
+                count = cursor.fetchone()["count"]
+                
+                if count > 0:
+                    logger.info(f"Grid already populated with {count} points")
+                    return
+                
+                # Populate grid using the grid generator
+                logger.info("Populating grid with coordinates...")
+                success = self.grid_generator.populate_database()
+                
+                if success:
+                    logger.info("Grid populated successfully")
+                else:
+                    raise Exception("Failed to populate grid")
+                
+        except Exception as e:
+            logger.error(f"Failed to ensure grid is populated: {e}")
+            raise
     
     def _split_into_batches(self, coordinates: List[Tuple[float, float]]) -> List[List[Tuple[float, float]]]:
         """Split coordinates into batches of specified size"""
@@ -130,14 +190,14 @@ class BatchUpdater:
                     "timezone": "auto"
                 }
                 
-                # Use POST for large batches to avoid URL length limits
+                # Use POST for batches > 50
                 use_post = len(coordinates) > 50
                 response = await self.open_meteo.make_request("/forecast", params, use_post=use_post)
                 return response if isinstance(response, list) else []
                 
         except Exception as e:
             logger.error(f"Failed to get batch current weather: {e}")
-            return []
+            raise
     
     async def _get_batch_forecast(self, coordinates: List[Tuple[float, float]]) -> List[Dict[str, Any]]:
         """Get forecast data for a batch of coordinates"""
@@ -151,14 +211,14 @@ class BatchUpdater:
                     "forecast_days": 5
                 }
                 
-                # Use POST for large batches to avoid URL length limits
+                # Use POST for batches > 50
                 use_post = len(coordinates) > 50
                 response = await self.open_meteo.make_request("/forecast", params, use_post=use_post)
                 return response if isinstance(response, list) else []
                 
         except Exception as e:
             logger.error(f"Failed to get batch forecast: {e}")
-            return []
+            raise
     
     async def _update_current_weather_batch(self, batch_data: List[Dict[str, Any]], coordinates: List[Tuple[float, float]]) -> int:
         """Update current weather data in database for a batch"""
@@ -217,7 +277,7 @@ class BatchUpdater:
                 
         except Exception as e:
             logger.error(f"Failed to update current weather batch: {e}")
-            return 0
+            raise
     
     async def _update_forecast_batch(self, batch_data: List[Dict[str, Any]], coordinates: List[Tuple[float, float]]) -> int:
         """Update forecast data in database for a batch"""
@@ -282,51 +342,17 @@ class BatchUpdater:
                 
         except Exception as e:
             logger.error(f"Failed to update forecast batch: {e}")
-            return 0
+            raise
     
     def _get_weather_description(self, weather_code: int) -> str:
         """Convert weather code to description"""
         weather_descriptions = {
-            0: "Clear sky",
-            1: "Mainly clear",
-            2: "Partly cloudy",
-            3: "Overcast",
-            45: "Fog",
-            48: "Depositing rime fog",
-            51: "Light drizzle",
-            53: "Moderate drizzle",
-            55: "Dense drizzle",
-            61: "Slight rain",
-            63: "Moderate rain",
-            65: "Heavy rain",
-            71: "Slight snow",
-            73: "Moderate snow",
-            75: "Heavy snow",
-            77: "Snow grains",
-            80: "Slight rain showers",
-            81: "Moderate rain showers",
-            82: "Violent rain showers",
-            85: "Slight snow showers",
-            86: "Heavy snow showers",
-            95: "Thunderstorm",
-            96: "Thunderstorm with slight hail",
-            99: "Thunderstorm with heavy hail"
+            0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
+            45: "Fog", 48: "Depositing rime fog", 51: "Light drizzle", 53: "Moderate drizzle",
+            55: "Dense drizzle", 61: "Slight rain", 63: "Moderate rain", 65: "Heavy rain",
+            71: "Slight snow", 73: "Moderate snow", 75: "Heavy snow", 77: "Snow grains",
+            80: "Slight rain showers", 81: "Moderate rain showers", 82: "Violent rain showers",
+            85: "Slight snow showers", 86: "Heavy snow showers", 95: "Thunderstorm",
+            96: "Thunderstorm with slight hail", 99: "Thunderstorm with heavy hail"
         }
         return weather_descriptions.get(weather_code, "Unknown")
-    
-    async def _log_update(self, update_type: str, updated: int, failed: int, total: int):
-        """Log update results to database"""
-        try:
-            with db_manager as conn:
-                conn.execute("""
-                    INSERT INTO update_log (update_type, grid_points_updated, success, error_message, duration_seconds)
-                    VALUES (?, ?, ?, ?, ?)
-                """, (
-                    update_type,
-                    updated,
-                    failed == 0,
-                    f"Updated {updated}, failed {failed}" if failed > 0 else None,
-                    0.0  # Duration not tracked for now
-                ))
-        except Exception as e:
-            logger.error(f"Failed to log update: {e}")

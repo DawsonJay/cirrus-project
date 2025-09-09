@@ -64,7 +64,7 @@ const AdvancedWireframeMap: React.FC<AdvancedWireframeMapProps> = ({
   description 
 }) => {
   // Mock Canadian provinces outline data (simplified)
-  const canadaOutline = [
+  const canadaOutline: [number, number][] = [
     [49.0, -123.0], [49.0, -95.0], [60.0, -95.0], [60.0, -123.0], [49.0, -123.0]
   ];
 

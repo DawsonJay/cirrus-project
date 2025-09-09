@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
-import { colors, spacing } from '../../theme/index.ts';
+import { colors, spacing } from '../../theme';
 
 interface TopBarProps {
   title: string;

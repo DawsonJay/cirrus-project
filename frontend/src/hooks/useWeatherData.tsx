@@ -7,7 +7,7 @@ import {
   Security as SecurityIcon,
   Cloud as CloudIcon,
 } from '@mui/icons-material';
-import { WeatherType, WeatherData } from '../types/weather.ts';
+import { WeatherType, WeatherData } from '../types/weather';
 
 export const useWeatherTypes = (): WeatherType[] => {
   return useMemo(() => [

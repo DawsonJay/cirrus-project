@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test script for the data pool system
+Test script for the production data pool system
 """
 
 import asyncio
@@ -11,93 +11,115 @@ from pathlib import Path
 # Add the app directory to the path
 sys.path.append(str(Path(__file__).parent))
 
-from app.database.connection import db_manager
-from app.services.grid_generator import GridGenerator
 from app.services.batch_updater import BatchUpdater
+from app.database.connection import db_manager
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-async def test_data_pool():
-    """Test the complete data pool system"""
+async def test_data_pool_system():
+    """Test the production data pool system"""
+    print("=== TESTING PRODUCTION DATA POOL SYSTEM ===\n")
     
-    print("=== TESTING DATA POOL SYSTEM ===\n")
-    
-    # 1. Initialize database
-    print("1. Initializing database...")
-    if db_manager.initialize_database():
-        print("✅ Database initialized successfully")
-    else:
-        print("❌ Database initialization failed")
-        return
-    
-    # 2. Generate grid
-    print("\n2. Generating grid coordinates...")
-    grid_generator = GridGenerator(spacing_km=100.0)  # Start with 100km for testing
-    
-    if grid_generator.populate_database():
-        print("✅ Grid populated successfully")
+    try:
+        # 1. Initialize database
+        print("1. Initializing database...")
+        db_manager.initialize_database()
+        print("✅ Database initialized successfully\n")
         
-        # Show grid stats
-        stats = grid_generator.get_grid_stats()
-        print(f"   Total points: {stats.get('total_points', 0)}")
-        print(f"   Regions: {stats.get('regions', 0)}")
-        print(f"   Coverage: {stats.get('min_lat', 0):.1f}°N to {stats.get('max_lat', 0):.1f}°N")
-        print(f"   Longitude: {stats.get('min_lon', 0):.1f}°W to {stats.get('max_lon', 0):.1f}°W")
+        # 2. Create batch updater
+        print("2. Creating batch updater (batch size: 200)...")
+        updater = BatchUpdater(batch_size=200)
+        print("✅ Batch updater created\n")
         
-        if 'region_breakdown' in stats:
-            print("   Region breakdown:")
-            for region, count in list(stats['region_breakdown'].items())[:5]:
-                print(f"     {region}: {count} points")
-    else:
-        print("❌ Grid population failed")
-        return
-    
-    # 3. Test batch update (efficient large batches)
-    print("\n3. Testing batch update...")
-    batch_updater = BatchUpdater(batch_size=540)  # Optimal batch size found through testing
-    
-    # Test with all coordinates (now efficient with large batches)
-    coordinates = grid_generator.get_coordinates_for_batch()
-    print(f"   Testing with {len(coordinates)} coordinates in {len(coordinates)//540 + 1} batches")
-    
-    # Update current weather
-    result = await batch_updater.update_all_current_weather()
-    if result.get("success"):
-        print(f"✅ Current weather update: {result['updated']} updated, {result['failed']} failed")
-    else:
-        print(f"❌ Current weather update failed: {result.get('error', 'Unknown error')}")
-    
-    # 4. Test data retrieval
-    print("\n4. Testing data retrieval...")
+        # 3. Test current weather update
+        print("3. Testing current weather update...")
+        print("   Using fixed batch size of 200 (reliable and efficient)\n")
+        
+        weather_result = await updater.update_current_weather()
+        
+        if weather_result.get("success"):
+            print(f"✅ Current weather update successful!")
+            print(f"   Updated: {weather_result['updated']} points")
+            print(f"   Failed: {weather_result['failed']} points")
+            print(f"   Total: {weather_result['total']} points")
+            print(f"   Batches processed: {weather_result['batches_processed']}/{weather_result['total_batches']}")
+        else:
+            print(f"❌ Current weather update failed: {weather_result.get('error')}")
+        
+        print()
+        
+        # 4. Test forecast update
+        print("4. Testing forecast update...")
+        print("   Using same batch size for consistency\n")
+        
+        forecast_result = await updater.update_forecasts()
+        
+        if forecast_result.get("success"):
+            print(f"✅ Forecast update successful!")
+            print(f"   Updated: {forecast_result['updated']} points")
+            print(f"   Failed: {forecast_result['failed']} points")
+            print(f"   Total: {forecast_result['total']} points")
+            print(f"   Batches processed: {forecast_result['batches_processed']}/{forecast_result['total_batches']}")
+        else:
+            print(f"❌ Forecast update failed: {forecast_result.get('error')}")
+        
+        print()
+        
+        # 5. Test data retrieval
+        print("5. Testing data retrieval...")
+        await test_data_retrieval()
+        
+        print("\n=== DATA POOL SYSTEM TEST COMPLETE ===")
+        
+    except Exception as e:
+        logger.error(f"Test failed: {e}")
+        print(f"❌ Test failed: {e}")
+
+async def test_data_retrieval():
+    """Test retrieving data from the populated database"""
     try:
         with db_manager as conn:
+            # Test current weather data
             cursor = conn.execute("""
-                SELECT COUNT(*) as count FROM current_weather 
+                SELECT COUNT(*) as count 
+                FROM current_weather 
                 WHERE updated_at > datetime('now', '-1 hour')
             """)
-            recent_data = cursor.fetchone()["count"]
-            print(f"✅ Found {recent_data} recent weather records")
+            recent_weather = cursor.fetchone()["count"]
             
-            # Show sample data
+            # Test forecast data
             cursor = conn.execute("""
-                SELECT cw.*, gp.latitude, gp.longitude, gp.region_name
+                SELECT COUNT(*) as count 
+                FROM forecast_data 
+                WHERE updated_at > datetime('now', '-1 hour')
+            """)
+            recent_forecasts = cursor.fetchone()["count"]
+            
+            # Test sample data
+            cursor = conn.execute("""
+                SELECT cw.temperature, cw.humidity, cw.weather_description,
+                       gp.latitude, gp.longitude, gp.region_name
                 FROM current_weather cw
                 JOIN grid_points gp ON cw.grid_point_id = gp.id
-                LIMIT 3
+                WHERE cw.updated_at > datetime('now', '-1 hour')
+                LIMIT 5
             """)
-            samples = cursor.fetchall()
+            sample_data = cursor.fetchall()
             
-            print("   Sample data:")
-            for sample in samples:
-                print(f"     {sample['region_name']} ({sample['latitude']:.1f}, {sample['longitude']:.1f}): "
-                      f"{sample['temperature']:.1f}°C, {sample['humidity']:.1f}% humidity")
-    
+            print(f"✅ Data retrieval successful!")
+            print(f"   Recent weather records: {recent_weather}")
+            print(f"   Recent forecast records: {recent_forecasts}")
+            print(f"   Sample data:")
+            
+            for row in sample_data:
+                print(f"     {row['latitude']:.2f}°N, {row['longitude']:.2f}°W ({row['region_name']}):")
+                print(f"       {row['temperature']}°C, {row['humidity']}% humidity, {row['weather_description']}")
+            
     except Exception as e:
-        print(f"❌ Data retrieval failed: {e}")
-    
-    print("\n=== DATA POOL TEST COMPLETE ===")
+        logger.error(f"Data retrieval test failed: {e}")
+        print(f"❌ Data retrieval test failed: {e}")
 
 if __name__ == "__main__":
-    asyncio.run(test_data_pool())
+    asyncio.run(test_data_pool_system())

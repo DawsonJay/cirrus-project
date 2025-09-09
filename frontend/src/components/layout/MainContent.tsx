@@ -1,13 +1,20 @@
 import React from 'react';
 import { Box } from '@mui/material';
-import { colors, spacing } from '../../theme/index.ts';
-import { useWeatherTypes } from '../../hooks/useWeatherData.tsx';
-import { MainContentProps } from '../../types/weather.ts';
-import SimpleWireframeMap from '../map/SimpleWireframeMap.tsx';
+import { colors, spacing } from '../../theme';
+import { useWeatherTypes } from '../../hooks/useWeatherData';
+import { MainContentProps } from '../../types/weather';
+import SimpleWireframeMap from '../map/SimpleWireframeMap';
+import WeatherDataMap from '../map/WeatherDataMap';
+import RecalibrationPage from '../../pages/RecalibrationPage';
 
 const MainContent: React.FC<MainContentProps> = ({ selectedTab }) => {
   const weatherTypes = useWeatherTypes();
   const currentWeather = weatherTypes[selectedTab];
+
+  // Show recalibration page for tab 6
+  if (selectedTab === 6) {
+    return <RecalibrationPage />;
+  }
 
   return (
     <Box
@@ -32,9 +39,7 @@ const MainContent: React.FC<MainContentProps> = ({ selectedTab }) => {
           overflow: 'hidden',
         }}
       >
-        <SimpleWireframeMap
-          weatherType={currentWeather.name}
-        />
+        <WeatherDataMap sampleSize={1000} />
       </Box>
     </Box>
   );

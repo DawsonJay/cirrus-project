@@ -1,10 +1,10 @@
 import React from 'react';
 import { Box } from '@mui/material';
-import { spacing } from '../../theme/index.ts';
-import { useNavigation } from '../../hooks/useNavigation.ts';
-import Sidebar from './Sidebar.tsx';
-import TopBar from './TopBar.tsx';
-import MainContent from './MainContent.tsx';
+import { spacing } from '../../theme';
+import { useNavigation } from '../../hooks/useNavigation';
+import Sidebar from './Sidebar';
+import TopBar from './TopBar';
+import MainContent from './MainContent';
 
 const Layout: React.FC = () => {
   const { selectedTab, handleTabChange } = useNavigation();

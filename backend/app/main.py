@@ -11,6 +11,7 @@ from typing import Dict, Any
 
 from .config import settings
 from .services.weather_service import WeatherService
+from .api.weather import router as weather_router
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -33,6 +34,9 @@ app.add_middleware(
 # Initialize weather service
 weather_service = WeatherService()
 
+# Include API routers
+app.include_router(weather_router)
+
 @app.get("/")
 async def root():
     """Root endpoint with API information"""
@@ -45,7 +49,9 @@ async def root():
             "/health",
             "/api/weather/current",
             "/api/weather/forecast",
-            "/api/weather/alerts"
+            "/api/weather/alerts",
+            "/api/weather/grid",
+            "/api/weather/stats"
         ]
     }
 
