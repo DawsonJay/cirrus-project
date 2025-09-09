@@ -60,6 +60,16 @@ export const getScaledReferencePoints = (referencePoints: Record<string, Referen
  * @returns SVG pixel coordinates {x, y}
  */
 export const geoToSvg = (lat: number, lon: number): { x: number; y: number } => {
+  // Validate input coordinates
+  if (lat == null || lon == null || isNaN(lat) || isNaN(lon)) {
+    console.warn(`geoToSvg: Invalid coordinates - lat: ${lat}, lon: ${lon}`);
+    return { x: 0, y: 0 };
+  }
+  
+  // Clamp coordinates to reasonable ranges
+  const clampedLat = Math.max(-90, Math.min(90, lat));
+  const clampedLon = Math.max(-180, Math.min(180, lon));
+  
   const scaledPoints = getScaledReferencePoints(normalizedReferencePoints);
   const points = Object.values(scaledPoints);
   
@@ -69,10 +79,9 @@ export const geoToSvg = (lat: number, lon: number): { x: number; y: number } => 
   const eastPoint = points.find(p => p.name === "Cape Spear")!;
   const westPoint = points.find(p => p.name === "Vancouver")!;
   
-  
   // Convert to radians
-  const latRad = (lat * Math.PI) / 180;
-  const lonRad = (lon * Math.PI) / 180;
+  const latRad = (clampedLat * Math.PI) / 180;
+  const lonRad = (clampedLon * Math.PI) / 180;
   const northLatRad = (northPoint.lat * Math.PI) / 180;
   const southLatRad = (southPoint.lat * Math.PI) / 180;
   const eastLonRad = (eastPoint.lon * Math.PI) / 180;
@@ -91,6 +100,11 @@ export const geoToSvg = (lat: number, lon: number): { x: number; y: number } => 
   const x = westPoint.x + (lonPercent * (eastPoint.x - westPoint.x));
   const y = southPoint.y - (latPercent * (southPoint.y - northPoint.y));
   
+  // Validate output coordinates
+  if (isNaN(x) || isNaN(y)) {
+    console.warn(`geoToSvg: Result is NaN - lat: ${lat}, lon: ${lon}, x: ${x}, y: ${y}`);
+    return { x: 0, y: 0 };
+  }
   
   return { x, y };
 };
@@ -115,22 +129,36 @@ export const transformGridPointToSvg = (point: Omit<GridPoint, 'svgX' | 'svgY'>)
  * @returns Array of grid points with SVG coordinates added
  */
 export const transformGridToSvg = (points: any[]): GridPoint[] => {
-  return points.map(point => {
-    // Handle backend data format: { id, latitude, longitude, region_name, temperature, humidity, ... }
-    const gridPoint: Omit<GridPoint, 'svgX' | 'svgY'> = {
-      lat: point.latitude,
-      lon: point.longitude,
-      temperature: point.temperature,
-      humidity: point.humidity,
-      pressure: point.pressure,
-      windSpeed: point.wind_speed,
-      windDirection: point.wind_direction,
-      precipitation: point.precipitation,
-      visibility: point.visibility,
-      cloudCover: point.cloud_cover,
-      uvIndex: point.uv_index
-    };
-    
-    return transformGridPointToSvg(gridPoint);
-  });
+  return points
+    .filter(point => 
+      point && 
+      point.latitude != null && 
+      point.longitude != null && 
+      !isNaN(point.latitude) && 
+      !isNaN(point.longitude)
+    )
+    .map(point => {
+      // Handle backend data format: { id, latitude, longitude, region_name, temperature, humidity, ... }
+      const gridPoint: Omit<GridPoint, 'svgX' | 'svgY'> = {
+        lat: point.latitude,
+        lon: point.longitude,
+        temperature: point.temperature,
+        humidity: point.humidity,
+        pressure: point.pressure,
+        windSpeed: point.wind_speed,
+        windDirection: point.wind_direction,
+        precipitation: point.precipitation,
+        visibility: point.visibility,
+        cloudCover: point.cloud_cover,
+        uvIndex: point.uv_index
+      };
+      
+      return transformGridPointToSvg(gridPoint);
+    })
+    .filter(point => 
+      point.svgX != null && 
+      point.svgY != null && 
+      !isNaN(point.svgX) && 
+      !isNaN(point.svgY)
+    );
 };

@@ -13,6 +13,7 @@ interface GridOverlayProps {
   showUvIndex?: boolean;
   pointSize?: number;
   className?: string;
+  zIndex?: number;
 }
 
 /**
@@ -162,7 +163,8 @@ export const GridOverlay: React.FC<GridOverlayProps> = ({
   showCloudCover = false,
   showUvIndex = false,
   pointSize = 1,
-  className = ''
+  className = '',
+  zIndex = 1
 }) => {
   const { gridData, isLoading, error } = useGridData();
 

@@ -6,6 +6,7 @@ import { MainContentProps } from '../../types/weather';
 import SimpleWireframeMap from '../map/SimpleWireframeMap';
 import WeatherDataMap from '../map/WeatherDataMap';
 import RecalibrationPage from '../../pages/RecalibrationPage';
+import OverlayDemoPage from '../../pages/OverlayDemoPage';
 
 const MainContent: React.FC<MainContentProps> = ({ selectedTab }) => {
   const weatherTypes = useWeatherTypes();
@@ -14,6 +15,11 @@ const MainContent: React.FC<MainContentProps> = ({ selectedTab }) => {
   // Show recalibration page for tab 6
   if (selectedTab === 6) {
     return <RecalibrationPage />;
+  }
+
+  // Show overlay demo page for tab 7
+  if (selectedTab === 7) {
+    return <OverlayDemoPage />;
   }
 
   return (

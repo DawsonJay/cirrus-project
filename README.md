@@ -1,246 +1,205 @@
 # Cirrus Project - Canadian Weather AI Prediction System
 
-## Overview
+**Status**: Development Phase - Data Collection Limited  
+**Last Updated**: January 9, 2025  
 
-The Cirrus Project is an advanced AI-powered weather prediction and early warning system specifically designed for Canadian weather challenges. The system uses machine learning to predict severe weather events like wildfires, hailstorms, tornadoes, floods, and derechos, providing early warnings to help prevent the $940M+ in annual weather-related damages Canada experiences.
+## Project Overview
 
-## Project Vision
+The Cirrus Project is a comprehensive Canadian weather prediction system designed for portfolio demonstration and Canadian immigration purposes. The system combines a sophisticated coordinate transformation system with weather data collection and AI-powered predictions.
 
-**Mission**: Create a comprehensive weather prediction system that demonstrates advanced AI/ML capabilities while addressing real Canadian weather challenges.
+## Current Status
 
-**Goal**: Build a public-facing dashboard that showcases full-stack development skills, AI/ML expertise, and understanding of Canadian market needs for portfolio and immigration purposes.
+### ✅ **Completed Components**
+- **Frontend**: React/TypeScript with Material-UI theming
+- **Map System**: SVG-based Canada map with precise coordinate transformation
+- **Grid System**: 19,008 point regular grid (50km spacing) across Canada
+- **Coordinate System**: Centralized positioning system with Mercator projection
+- **Backend API**: FastAPI with SQLite database
+- **Database Schema**: Complete with grid_points, current_weather, forecast_data tables
+
+### ⚠️ **Current Limitations**
+- **Data Coverage**: Only 400/19,008 points (2.1%) due to API rate limits
+- **API Limits**: Open-Meteo daily limit exceeded (resets at midnight UTC)
+- **UI Experiments**: Blocked until full data available
+- **AI Development**: Cannot proceed without complete dataset
+
+## System Architecture
+
+### **Frontend** (`/frontend`)
+- **Technology**: React 18, TypeScript, Material-UI
+- **Map System**: SVG-based with coordinate transformation
+- **Components**: WeatherDataMap, GridOverlay, RecalibrationOverlay
+- **Coordinate System**: Centralized positioning with `mapPositioning.ts`
+
+### **Backend** (`/backend`)
+- **Technology**: FastAPI, Python 3.12, SQLite
+- **APIs**: Open-Meteo, Environment Canada, OpenWeather
+- **Data Processing**: Batch processing with error handling
+- **Database**: 19,008 grid points with weather data storage
+
+### **Data Pool System**
+- **Grid Points**: 19,008 coordinates across Canada
+- **Weather Data**: Temperature, humidity, wind, pressure, precipitation
+- **Coverage**: 16 Canadian regions with accurate bounds
+- **Update Frequency**: Daily (when API limits allow)
 
 ## Key Features
 
-### Core Functionality
-- **Real-time Weather Monitoring**: Continuous tracking of weather conditions across Canada
-- **AI-Powered Predictions**: Machine learning models for severe weather event prediction
-- **Interactive Dashboard**: Professional, user-friendly interface with interactive maps
-- **Adaptive Updates**: Configurable update frequency (hourly to real-time based on risk level)
-- **Historical Analysis**: Pattern recognition and learning from past weather events
-- **Confidence Scoring**: AI uncertainty quantification for prediction reliability
+### **Map System**
+- **Precise Alignment**: 23 calibrated reference points
+- **Mercator Projection**: Accurate geographic positioning
+- **Coordinate Transformation**: `geoToSvg()` function for pixel mapping
+- **Responsive Design**: Scales with map size changes
 
-### Weather Disaster Types
-- **Wildfires** (Primary Focus): Risk assessment and spread prediction
-- **Hailstorms**: Alberta's "Hailstorm Alley" and other high-risk areas
-- **Tornadoes**: Southern provinces tornado risk assessment
-- **Floods**: River level monitoring and flood risk prediction
-- **Derechos**: Widespread windstorm forecasting
+### **Weather Visualization**
+- **Temperature Coloring**: Blue (cold) to Red (hot)
+- **Data Points**: Configurable sample size (default 1000)
+- **Regional Coverage**: 16 Canadian regions
+- **Real-time Updates**: Live weather data display
 
-## Technical Architecture
-
-### Technology Stack
-
-#### Backend (Python)
-- **Framework**: FastAPI for modern, fast API development
-- **Machine Learning**: TensorFlow/Keras, scikit-learn, XGBoost
-- **Data Processing**: NumPy, Pandas, GeoPandas
-- **Time Series**: Prophet, statsmodels
-- **Database**: PostgreSQL with SQLAlchemy ORM
-- **Caching**: Redis for performance optimization
-- **Background Tasks**: Celery for real-time processing
-
-#### Frontend (React)
-- **Framework**: React 18 with TypeScript
-- **UI Components**: Material-UI (MUI) for professional design
-- **Maps**: Leaflet with React-Leaflet for interactive weather visualization
-- **Charts**: Chart.js and D3.js for data visualization
-- **State Management**: Redux Toolkit and React Query
-- **Styling**: Styled Components for custom styling
-
-#### Data Sources
-- **Environment Canada**: Official Canadian weather data
-- **Natural Resources Canada**: Wildfire and environmental data
-- **OpenWeatherMap**: Global weather data (free tier)
-- **NOAA**: US weather data for cross-border analysis
-- **Government of Canada Open Data**: Additional environmental datasets
-
-### System Architecture
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   React Frontend │    │  FastAPI Backend │    │   ML Models     │
-│                 │    │                 │    │                 │
-│ • Interactive   │◄──►│ • Weather APIs  │◄──►│ • LSTM Networks │
-│   Maps          │    │ • Data Processing│    │ • Random Forest │
-│ • Dashboard     │    │ • Model Serving │    │ • Ensemble      │
-│ • Visualizations│    │ • Alert System  │    │ • Time Series   │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-         │                       │                       │
-         ▼                       ▼                       ▼
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   User Interface │    │   Data Pipeline │    │   Prediction    │
-│                 │    │                 │    │   Engine        │
-│ • Universal     │    │ • Real-time     │    │ • Risk          │
-│   Dashboard     │    │   Updates       │    │   Assessment    │
-│ • No Accounts   │    │ • Adaptive      │    │ • Confidence    │
-│ • National View │    │   Frequency     │    │   Scoring       │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-```
-
-## Project Structure
-
-```
-cirrus-project/
-├── backend/
-│   ├── app/
-│   │   ├── models/          # ML model definitions
-│   │   ├── api/             # FastAPI routes
-│   │   ├── services/        # Business logic
-│   │   ├── data/            # Data processing
-│   │   └── utils/           # Helper functions
-│   ├── requirements.txt
-│   ├── Dockerfile
-│   └── README.md
-├── frontend/
-│   ├── src/
-│   │   ├── components/      # React components
-│   │   ├── pages/           # Dashboard pages
-│   │   ├── services/        # API calls
-│   │   ├── utils/           # Helper functions
-│   │   └── types/           # TypeScript types
-│   ├── package.json
-│   ├── Dockerfile
-│   └── README.md
-├── docs/
-│   ├── api/                 # API documentation
-│   ├── models/              # ML model documentation
-│   └── deployment/          # Deployment guides
-├── data/
-│   ├── raw/                 # Raw weather data
-│   ├── processed/           # Processed datasets
-│   └── models/              # Trained model files
-├── docker-compose.yml
-├── .gitignore
-└── README.md
-```
-
-## Development Phases
-
-### Phase 1: Core System (Weeks 1-2)
-- [ ] Set up development environment
-- [ ] Implement data ingestion pipeline
-- [ ] Create basic ML framework
-- [ ] Build core dashboard components
-- [ ] Establish database schema
-
-### Phase 2: Wildfire Module (Weeks 3-4)
-- [ ] Implement wildfire prediction models
-- [ ] Create interactive wildfire map
-- [ ] Add risk assessment algorithms
-- [ ] Implement historical analysis
-- [ ] Add confidence scoring
-
-### Phase 3: Polish & Deploy (Weeks 5-6)
-- [ ] UI/UX refinement
-- [ ] Performance optimization
-- [ ] Testing and validation
-- [ ] Deployment setup
-- [ ] Documentation completion
-
-## Key Design Decisions
-
-### Geographic Scope
-- **Coverage**: All of Canada from the start
-- **Rationale**: Weather patterns are easier to predict over broad areas, consistent scope
-
-### Update Frequency
-- **Normal**: Hourly updates for routine monitoring
-- **Elevated**: 15-minute updates for increased risk
-- **Critical**: 5-minute updates for high-risk situations
-- **Disaster**: Real-time updates during active events
-
-### User Experience
-- **Universal Dashboard**: Single view for all users
-- **No User Accounts**: Simplified experience, focus on core functionality
-- **National View**: Interactive map covering all of Canada
-- **Weather Overlays**: Color-coded risk visualization
-
-### AI/ML Approach
-- **Balanced Quality**: Proven techniques with good accuracy
-- **Modular Architecture**: Shared core system (80%) + disaster-specific modules (20%)
-- **Ensemble Methods**: Multiple models for improved predictions
-- **Confidence Scoring**: AI uncertainty quantification
-
-## Portfolio Value
-
-### Technical Skills Demonstrated
-- **Full-Stack Development**: React frontend + Python backend
-- **Machine Learning**: LSTM networks, ensemble methods, time series analysis
-- **Data Science**: Weather data processing, feature engineering, model evaluation
-- **System Design**: Scalable architecture, real-time processing, adaptive systems
-- **API Development**: RESTful services, data integration, documentation
-
-### Canadian Market Appeal
-- **Local Relevance**: Addresses real Canadian weather challenges
-- **Economic Impact**: Targets $940M+ annual weather damage problem
-- **Industry Applications**: Insurance, agriculture, transportation, emergency services
-- **Government Interest**: Municipal planning, public safety, resource allocation
-
-### Growth Story Alignment
-- **Current Skills**: Web development, API integration, data visualization
-- **Growing Skills**: Machine learning, predictive modeling, data science
-- **Future Skills**: These techniques transfer to robotics navigation, sensor fusion, autonomous systems
+### **Coordinate System**
+- **Centralized API**: `mapPositioning.ts` for all positioning
+- **Type Safety**: TypeScript interfaces for reliability
+- **Predefined Cities**: 32 major Canadian cities
+- **Consistent Transformation**: Same logic as weather data grid
 
 ## Getting Started
 
-### Prerequisites
-- Python 3.9+
-- Node.js 16+
-- Docker (optional)
-- Git
+### **Prerequisites**
+- Node.js 18+ and npm
+- Python 3.12+
+- SQLite 3
 
-### Quick Start
+### **Installation**
 ```bash
-# Clone the repository
+# Clone repository
 git clone <repository-url>
 cd cirrus-project
 
-# Set up backend
+# Backend setup
 cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
+python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
-# Set up frontend
-cd ../frontend
+# Frontend setup
+cd frontend
 npm install
-
-# Start development servers
-# Backend (from backend directory)
-uvicorn app.main:app --reload
-
-# Frontend (from frontend directory)
 npm start
 ```
 
-### Development Environment
-```bash
-# Using Docker Compose
-docker-compose up --build
-```
+### **Access**
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:8000
+- **API Docs**: http://localhost:8000/docs
+
+## API Endpoints
+
+### **Weather Data**
+- **`GET /api/weather/grid`**: Sampled weather data (1000 points)
+- **`GET /api/weather/grid/full`**: All 19,008 points
+- **`GET /api/weather/stats`**: Coverage statistics
+
+### **Parameters**
+- **`sample_size`**: Number of points to return
+- **`region`**: Filter by specific region
+- **`temperature_min/max`**: Filter by temperature range
+
+## Data Status
+
+### **Current Coverage**
+- **Total Grid Points**: 19,008
+- **Weather Data Points**: 400 (2.1% coverage)
+- **Data Regions**: US-Border (12.1%), Ontario (5.6%), Maritime (22.8%)
+- **Temperature Range**: 5.1°C to 26.0°C (average 16.1°C)
+
+### **Regional Breakdown**
+| Region | Total Points | Data Points | Coverage |
+|--------|-------------|-------------|----------|
+| NU | 3,817 | 0 | 0.0% |
+| NT | 2,520 | 0 | 0.0% |
+| Arctic | 2,059 | 0 | 0.0% |
+| US-Border | 1,740 | 210 | 12.1% |
+| QC | 1,689 | 0 | 0.0% |
+| ON | 1,656 | 92 | 5.6% |
+| BC | 1,539 | 0 | 0.0% |
+| Maritime | 430 | 98 | 22.8% |
+| Others | 3,558 | 0 | 0.0% |
+
+## Development Roadmap
+
+### **Phase 1: Data Collection** (Current)
+- [x] Grid system implementation
+- [x] Coordinate transformation system
+- [x] API integration framework
+- [ ] Full dataset population (blocked by API limits)
+
+### **Phase 2: UI Experiments** (Pending Data)
+- [ ] Temperature area visualization
+- [ ] Heat map implementation
+- [ ] Regional analysis tools
+- [ ] Interactive data exploration
+
+### **Phase 3: AI Development** (Pending Data)
+- [ ] Machine learning model training
+- [ ] Pattern recognition algorithms
+- [ ] Predictive weather analysis
+- [ ] Anomaly detection
+
+### **Phase 4: Production** (Future)
+- [ ] Performance optimization
+- [ ] Real-time data streaming
+- [ ] Advanced visualizations
+- [ ] Mobile responsiveness
+
+## Technical Constraints
+
+### **API Limitations**
+- **Open-Meteo**: Daily rate limit (currently exceeded)
+- **Environment Canada**: Connectivity issues
+- **OpenWeather**: Requires API key configuration
+- **Weather Unlocked**: Disabled due to connectivity issues
+
+### **Data Dependencies**
+- **UI Experiments**: Require full dataset (19,008 points)
+- **AI Development**: Need complete weather data
+- **Regional Analysis**: Require data across all regions
+- **Predictive Features**: Need historical data patterns
+
+## Documentation
+
+### **System Documentation**
+- **`docs/current-status.md`**: Current project status and limitations
+- **`docs/data-pool-architecture.md`**: Data collection system details
+- **`docs/dev-logs/`**: Development progress logs
+- **`docs/chat-records/`**: Project discussion records
+
+### **Code Documentation**
+- **`frontend/src/utils/README-mapPositioning.md`**: Coordinate system guide
+- **`backend/app/services/`**: API client implementations
+- **`frontend/src/components/`**: React component documentation
 
 ## Contributing
 
-This project is part of a portfolio development effort for Canadian immigration. The focus is on demonstrating technical skills, AI/ML capabilities, and understanding of Canadian market needs.
+### **Development Guidelines**
+1. **Follow TypeScript**: Use strict typing throughout
+2. **Document Decisions**: Record architectural choices
+3. **Test Thoroughly**: Verify coordinate accuracy
+4. **Consider Performance**: Optimize for large datasets
 
-### Development Guidelines
-- Follow the established project structure
-- Document all significant changes
-- Maintain code quality and testing
-- Focus on portfolio value and Canadian relevance
+### **Code Style**
+- **Frontend**: React functional components with hooks
+- **Backend**: FastAPI with async/await patterns
+- **Database**: SQLite with proper indexing
+- **Documentation**: Comprehensive README files
 
 ## License
 
-This project is created for portfolio and demonstration purposes.
+This project is developed for portfolio demonstration and Canadian immigration purposes.
 
 ## Contact
 
-This project is part of a comprehensive portfolio strategy for Canadian tech employment and Express Entry immigration.
+For questions about the project architecture or development approach, refer to the documentation in the `docs/` directory.
 
 ---
 
-**Project Status**: In Development  
-**Target Completion**: January 2026  
-**Portfolio Focus**: Canadian Weather AI Prediction System
+**Note**: This project is currently limited by API rate limits. Full functionality requires waiting for API reset or implementing alternative data sources.

@@ -8,6 +8,7 @@ import {
   Water as FloodIcon,
   Air as WindIcon,
   Settings as SettingsIcon,
+  Layers as LayersIcon,
 } from '@mui/icons-material';
 import { colors, spacing } from '../../theme';
 import { NavigationItem, SidebarProps } from '../../types/weather';
@@ -20,6 +21,7 @@ const navigationItems: NavigationItem[] = [
   { id: 4, label: 'Floods', icon: FloodIcon },
   { id: 5, label: 'Derechos', icon: WindIcon },
   { id: 6, label: 'Recalibrate', icon: SettingsIcon },
+  { id: 7, label: 'Overlay Demo', icon: LayersIcon },
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ selectedTab, onTabChange }) => {
