@@ -27,60 +27,6 @@ const SimpleWireframeMap: React.FC<SimpleWireframeMapProps> = ({
         }}
       />
       
-      {/* Grid lines for technical look */}
-      <svg
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          zIndex: 1,
-        }}
-        viewBox="0 0 800 600"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path
-          d="M 0 100 L 800 100"
-          fill="none"
-          stroke="#404040"
-          strokeWidth="1"
-          opacity="0.3"
-          strokeDasharray="2,2"
-        />
-        <path
-          d="M 0 200 L 800 200"
-          fill="none"
-          stroke="#404040"
-          strokeWidth="1"
-          opacity="0.3"
-          strokeDasharray="2,2"
-        />
-        <path
-          d="M 0 300 L 800 300"
-          fill="none"
-          stroke="#404040"
-          strokeWidth="1"
-          opacity="0.3"
-          strokeDasharray="2,2"
-        />
-        <path
-          d="M 0 400 L 800 400"
-          fill="none"
-          stroke="#404040"
-          strokeWidth="1"
-          opacity="0.3"
-          strokeDasharray="2,2"
-        />
-        <path
-          d="M 0 500 L 800 500"
-          fill="none"
-          stroke="#404040"
-          strokeWidth="1"
-          opacity="0.3"
-          strokeDasharray="2,2"
-        />
-      </svg>
       
       {/* Canada SVG with solid fill */}
       <Box
