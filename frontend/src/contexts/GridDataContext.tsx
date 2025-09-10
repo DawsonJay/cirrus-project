@@ -22,9 +22,9 @@ export const GridDataProvider: React.FC<GridDataProviderProps> = ({ children }) 
 
   /**
    * Loads grid data from the backend API and transforms coordinates to SVG
-   * @param sampleSize - Number of points to load (default: 1000)
+   * @param sampleSize - Number of points to load (default: 10000)
    */
-  const loadGridData = async (sampleSize: number = 1000) => {
+  const loadGridData = async (sampleSize: number = 10000) => {
     setIsLoading(true);
     setError(null);
 
@@ -61,9 +61,9 @@ export const GridDataProvider: React.FC<GridDataProviderProps> = ({ children }) 
     }
   };
 
-  // Load initial data on mount
+  // Load initial data on mount - Load all 10K points
   useEffect(() => {
-    loadGridData(1000);
+    loadGridData(10000);
   }, []);
 
   const value: GridDataContextType = {

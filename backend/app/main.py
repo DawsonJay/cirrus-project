@@ -7,10 +7,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
+import asyncio
 from typing import Dict, Any
 
 from .config import settings
 from .services.weather_service import WeatherService
+from .services.background_service import background_service
 from .api.weather import router as weather_router
 
 # Initialize FastAPI app
@@ -99,6 +101,50 @@ async def get_weather_alerts(lat: float, lon: float):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching alerts data: {str(e)}")
+
+# Background service endpoints
+@app.get("/api/service/status")
+async def get_service_status():
+    """Get background service status"""
+    try:
+        status = background_service.get_status()
+        return {
+            "success": True,
+            "data": status
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting service status: {str(e)}")
+
+@app.post("/api/service/start")
+async def start_background_service():
+    """Start the background weather data service"""
+    try:
+        if not background_service.running:
+            # Start the service in the background
+            asyncio.create_task(background_service.start())
+            return {
+                "success": True,
+                "message": "Background service started"
+            }
+        else:
+            return {
+                "success": True,
+                "message": "Background service already running"
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error starting service: {str(e)}")
+
+@app.post("/api/service/stop")
+async def stop_background_service():
+    """Stop the background weather data service"""
+    try:
+        await background_service.stop()
+        return {
+            "success": True,
+            "message": "Background service stopped"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error stopping service: {str(e)}")
 
 if __name__ == "__main__":
     uvicorn.run(app, host=settings.HOST, port=settings.PORT, reload=settings.DEBUG)

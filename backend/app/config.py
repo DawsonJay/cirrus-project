@@ -25,12 +25,16 @@ class Settings:
     # CORS Configuration
     CORS_ORIGINS: list = ["http://localhost:3000", "http://127.0.0.1:3000"]
     
-    # Weather API Keys
-    OPEN_METEO_API_KEY: Optional[str] = os.getenv("OPEN_METEO_API_KEY")  # Not required
-    ENVIRONMENT_CANADA_API_KEY: Optional[str] = os.getenv("ENVIRONMENT_CANADA_API_KEY")  # Not required
-    WEATHER_UNLOCKED_APP_ID: Optional[str] = os.getenv("WEATHER_UNLOCKED_APP_ID")
-    WEATHER_UNLOCKED_API_KEY: Optional[str] = os.getenv("WEATHER_UNLOCKED_API_KEY")
-    OPENWEATHER_API_KEY: Optional[str] = os.getenv("OPENWEATHER_API_KEY")
+    # NOAA Data Sources (FREE - NO API KEYS REQUIRED)
+    # NOAA CDO API Token (optional - for enhanced data access)
+    # Get free token from: https://www.ncdc.noaa.gov/cdo-web/token
+    NOAA_CDO_TOKEN: Optional[str] = os.getenv("NOAA_CDO_TOKEN")
+    
+    # Database Configuration
+    DATABASE_PATH: str = os.getenv("DATABASE_PATH", "data/weather_pool.db")
+    
+    # Data Collection Settings
+    BATCH_SIZE: int = int(os.getenv("BATCH_SIZE", "100"))
     
     # Data Storage
     DATA_DIR: str = os.getenv("DATA_DIR", "data")

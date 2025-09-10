@@ -2,7 +2,7 @@ import React from 'react';
 import { Box, Typography, CircularProgress, Alert } from '@mui/material';
 import { useGridData } from '../../contexts/GridDataContext';
 import GridOverlay from './GridOverlay';
-import { OverlayManager } from './overlays';
+import OverlayManager from './OverlayManager';
 
 interface WeatherDataMapProps {
   sampleSize?: number;
@@ -93,13 +93,15 @@ const WeatherDataMap: React.FC<WeatherDataMapProps> = ({ sampleSize = 1000 }) =>
 
       {/* Overlay System - Ready for custom overlays */}
       <OverlayManager>
-        {/* Base weather data grid */}
+        {/* Base weather data grid - Show all 10K points */}
         <GridOverlay
-          sampleSize={sampleSize}
-          showTemperature={true}
-          pointSize={1}
+          sampleSize={10000}
+          showTemperature={false}
+          pointSize={0.5}
           zIndex={2}
         />
+        
+        {/* Reference points overlay removed - coordinate system verified */}
         
         {/* Add custom overlays here as needed */}
       </OverlayManager>

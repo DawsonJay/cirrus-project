@@ -21,13 +21,23 @@ export interface GridPoint {
   svgX: number;
   svgY: number;
   
-  // Weather data
+  // Weather data (new schema v2 format)
+  temperature_2m?: number;
+  relative_humidity_2m?: number;
+  precipitation?: number;
+  wind_speed_10m?: number;
+  pressure_msl?: number;
+  cape?: number;
+  cin?: number;
+  date_slice?: string;
+  timestamp_utc?: string;
+  
+  // Legacy fields for backward compatibility
   temperature?: number;
   humidity?: number;
   pressure?: number;
   windSpeed?: number;
   windDirection?: number;
-  precipitation?: number;
   visibility?: number;
   cloudCover?: number;
   uvIndex?: number;
@@ -138,16 +148,28 @@ export const transformGridToSvg = (points: any[]): GridPoint[] => {
       !isNaN(point.longitude)
     )
     .map(point => {
-      // Handle backend data format: { id, latitude, longitude, region_name, temperature, humidity, ... }
+      // Handle new backend data format: { id, latitude, longitude, region, temperature_2m, relative_humidity_2m, ... }
       const gridPoint: Omit<GridPoint, 'svgX' | 'svgY'> = {
         lat: point.latitude,
         lon: point.longitude,
-        temperature: point.temperature,
-        humidity: point.humidity,
-        pressure: point.pressure,
-        windSpeed: point.wind_speed,
-        windDirection: point.wind_direction,
+        
+        // New schema v2 fields
+        temperature_2m: point.temperature_2m,
+        relative_humidity_2m: point.relative_humidity_2m,
         precipitation: point.precipitation,
+        wind_speed_10m: point.wind_speed_10m,
+        pressure_msl: point.pressure_msl,
+        cape: point.cape,
+        cin: point.cin,
+        date_slice: point.date_slice,
+        timestamp_utc: point.timestamp_utc,
+        
+        // Legacy fields for backward compatibility
+        temperature: point.temperature_2m || point.temperature,
+        humidity: point.relative_humidity_2m || point.humidity,
+        pressure: point.pressure_msl || point.pressure,
+        windSpeed: point.wind_speed_10m || point.wind_speed,
+        windDirection: point.wind_direction,
         visibility: point.visibility,
         cloudCover: point.cloud_cover,
         uvIndex: point.uv_index

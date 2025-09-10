@@ -16,10 +16,16 @@ class GridPoint(BaseModel):
     id: int
     latitude: float
     longitude: float
-    region_name: str
-    temperature: Optional[float] = None
-    humidity: Optional[float] = None
-    weather_description: Optional[str] = None
+    region: str
+    temperature_2m: Optional[float] = None
+    relative_humidity_2m: Optional[float] = None
+    precipitation: Optional[float] = None
+    wind_speed_10m: Optional[float] = None
+    pressure_msl: Optional[float] = None
+    cape: Optional[float] = None
+    cin: Optional[float] = None
+    date_slice: Optional[str] = None
+    timestamp_utc: Optional[str] = None
 
 
 class GridDataResponse(BaseModel):
@@ -31,15 +37,15 @@ class GridDataResponse(BaseModel):
 
 
 @router.get("/grid", response_model=GridDataResponse)
-async def get_grid_data(sample_size: int = 1000):
+async def get_grid_data(sample_size: int = 10000):
     """
-    Get evenly distributed grid points for map visualization
+    Get grid points with most recent weather data for map visualization
     
     Args:
-        sample_size: Number of points to return (default 1000)
+        sample_size: Number of points to return (default 10000)
     
     Returns:
-        GridDataResponse with evenly distributed points
+        GridDataResponse with most recent weather data
     """
     try:
         with db_manager as conn:
@@ -47,25 +53,79 @@ async def get_grid_data(sample_size: int = 1000):
             cursor = conn.execute("SELECT COUNT(*) as total FROM grid_points")
             total_points = cursor.fetchone()["total"]
             
-            # Get evenly distributed sample
-            # Use modulo to get evenly spaced points
-            step = max(1, total_points // sample_size)
-            
-            cursor = conn.execute("""
-                SELECT 
-                    gp.id,
-                    gp.latitude,
-                    gp.longitude,
-                    gp.region_name,
-                    cw.temperature,
-                    cw.humidity,
-                    cw.weather_description
-                FROM grid_points gp
-                LEFT JOIN current_weather cw ON gp.id = cw.grid_point_id
-                WHERE gp.id % ? = 0
-                ORDER BY gp.id
-                LIMIT ?
-            """, (step, sample_size))
+            # Get evenly distributed sample with most recent weather data
+            # Use geographic sampling to ensure even coverage across all regions
+            if sample_size >= total_points:
+                # Return all points if sample size is >= total
+                cursor = conn.execute("""
+                    SELECT 
+                        gp.id,
+                        gp.latitude,
+                        gp.longitude,
+                        gp.region,
+                        wd.temperature_2m,
+                        wd.relative_humidity_2m,
+                        wd.precipitation,
+                        wd.wind_speed_10m,
+                        wd.pressure_msl,
+                        wd.cape,
+                        wd.cin,
+                        wd.date_slice,
+                        wd.timestamp_utc
+                    FROM grid_points gp
+                    LEFT JOIN (
+                        SELECT 
+                            grid_point_id,
+                            temperature_2m,
+                            relative_humidity_2m,
+                            precipitation,
+                            wind_speed_10m,
+                            pressure_msl,
+                            cape,
+                            cin,
+                            date_slice,
+                            timestamp_utc,
+                            ROW_NUMBER() OVER (PARTITION BY grid_point_id ORDER BY date_slice DESC, timestamp_utc DESC) as rn
+                        FROM weather_data_3d
+                    ) wd ON gp.id = wd.grid_point_id AND wd.rn = 1
+                    ORDER BY gp.latitude DESC, gp.longitude
+                """)
+            else:
+                # Use geographic sampling for even distribution
+                cursor = conn.execute("""
+                    SELECT 
+                        gp.id,
+                        gp.latitude,
+                        gp.longitude,
+                        gp.region,
+                        wd.temperature_2m,
+                        wd.relative_humidity_2m,
+                        wd.precipitation,
+                        wd.wind_speed_10m,
+                        wd.pressure_msl,
+                        wd.cape,
+                        wd.cin,
+                        wd.date_slice,
+                        wd.timestamp_utc
+                    FROM grid_points gp
+                    LEFT JOIN (
+                        SELECT 
+                            grid_point_id,
+                            temperature_2m,
+                            relative_humidity_2m,
+                            precipitation,
+                            wind_speed_10m,
+                            pressure_msl,
+                            cape,
+                            cin,
+                            date_slice,
+                            timestamp_utc,
+                            ROW_NUMBER() OVER (PARTITION BY grid_point_id ORDER BY date_slice DESC, timestamp_utc DESC) as rn
+                        FROM weather_data_3d
+                    ) wd ON gp.id = wd.grid_point_id AND wd.rn = 1
+                    ORDER BY gp.latitude DESC, gp.longitude
+                    LIMIT ?
+                """, (sample_size,))
             
             points_data = cursor.fetchall()
             
@@ -76,19 +136,25 @@ async def get_grid_data(sample_size: int = 1000):
                     id=row["id"],
                     latitude=row["latitude"],
                     longitude=row["longitude"],
-                    region_name=row["region_name"],
-                    temperature=row["temperature"],
-                    humidity=row["humidity"],
-                    weather_description=row["weather_description"]
+                    region=row["region"],
+                    temperature_2m=row["temperature_2m"],
+                    relative_humidity_2m=row["relative_humidity_2m"],
+                    precipitation=row["precipitation"],
+                    wind_speed_10m=row["wind_speed_10m"],
+                    pressure_msl=row["pressure_msl"],
+                    cape=row["cape"],
+                    cin=row["cin"],
+                    date_slice=str(row["date_slice"]) if row["date_slice"] else None,
+                    timestamp_utc=str(row["timestamp_utc"]) if row["timestamp_utc"] else None
                 )
                 points.append(point)
             
             # Calculate data coverage
-            points_with_data = sum(1 for p in points if p.temperature is not None)
+            points_with_data = sum(1 for p in points if p.temperature_2m is not None)
             data_coverage = (points_with_data / len(points)) * 100 if points else 0
             
             # Calculate temperature range
-            temperatures = [p.temperature for p in points if p.temperature is not None]
+            temperatures = [p.temperature_2m for p in points if p.temperature_2m is not None]
             temperature_range = {
                 "min": min(temperatures) if temperatures else None,
                 "max": max(temperatures) if temperatures else None
