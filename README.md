@@ -1,205 +1,163 @@
-# Cirrus Project - Canadian Weather AI Prediction System
+# Weather Data Service
 
-**Status**: Development Phase - Data Collection Limited  
-**Last Updated**: January 9, 2025  
+A comprehensive weather data collection and API service for Canadian weather stations, built for the Cirrus Project - an AI system for predicting dangerous weather events across Canada.
 
-## Project Overview
+## Features
 
-The Cirrus Project is a comprehensive Canadian weather prediction system designed for portfolio demonstration and Canadian immigration purposes. The system combines a sophisticated coordinate transformation system with weather data collection and AI-powered predictions.
+- **8,912+ Canadian Weather Stations** - Complete database of active weather stations
+- **Automated Data Collection** - Daily collection from NOAA Climate Data Online API
+- **REST API** - FastAPI-based API for data access and collection control
+- **PostgreSQL Database** - Scalable cloud database for weather data storage
+- **Docker Support** - Containerized deployment for any platform
+- **Health Monitoring** - Comprehensive health checks and logging
+- **Rate Limiting** - Robust API retry logic with exponential backoff
 
-## Current Status
+## Quick Start
 
-### ✅ **Completed Components**
-- **Frontend**: React/TypeScript with Material-UI theming
-- **Map System**: SVG-based Canada map with precise coordinate transformation
-- **Grid System**: 19,008 point regular grid (50km spacing) across Canada
-- **Coordinate System**: Centralized positioning system with Mercator projection
-- **Backend API**: FastAPI with SQLite database
-- **Database Schema**: Complete with grid_points, current_weather, forecast_data tables
+### Local Development
 
-### ⚠️ **Current Limitations**
-- **Data Coverage**: Only 400/19,008 points (2.1%) due to API rate limits
-- **API Limits**: Open-Meteo daily limit exceeded (resets at midnight UTC)
-- **UI Experiments**: Blocked until full data available
-- **AI Development**: Cannot proceed without complete dataset
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/your-username/weather-data-service.git
+   cd weather-data-service
+   ```
 
-## System Architecture
+2. **Set up environment**
+   ```bash
+   cp env.template .env
+   # Edit .env and add your NOAA_CDO_TOKEN
+   ```
 
-### **Frontend** (`/frontend`)
-- **Technology**: React 18, TypeScript, Material-UI
-- **Map System**: SVG-based with coordinate transformation
-- **Components**: WeatherDataMap, GridOverlay, RecalibrationOverlay
-- **Coordinate System**: Centralized positioning with `mapPositioning.ts`
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-### **Weather Data Service** (`/weather-data-service`)
-- **Technology**: FastAPI, Python 3.12, SQLite
-- **APIs**: NOAA Climate Data Online, Environment Canada
-- **Data Processing**: Historical weather data collection and storage
-- **Database**: Canadian weather stations and daily weather records
+4. **Initialize database**
+   ```bash
+   python3 init_database.py
+   ```
 
-### **Data Pool System**
-- **Grid Points**: 19,008 coordinates across Canada
-- **Weather Data**: Temperature, humidity, wind, pressure, precipitation
-- **Coverage**: 16 Canadian regions with accurate bounds
-- **Update Frequency**: Daily (when API limits allow)
+5. **Run the service**
+   ```bash
+   python3 api.py
+   ```
 
-## Key Features
+### Docker Deployment
 
-### **Map System**
-- **Precise Alignment**: 23 calibrated reference points
-- **Mercator Projection**: Accurate geographic positioning
-- **Coordinate Transformation**: `geoToSvg()` function for pixel mapping
-- **Responsive Design**: Scales with map size changes
+1. **Build and run**
+   ```bash
+   docker build -t weather-data-service .
+   docker run -p 8000:8000 -e NOAA_CDO_TOKEN=your_token weather-data-service
+   ```
 
-### **Weather Visualization**
-- **Temperature Coloring**: Blue (cold) to Red (hot)
-- **Data Points**: Configurable sample size (default 1000)
-- **Regional Coverage**: 16 Canadian regions
-- **Real-time Updates**: Live weather data display
-
-### **Coordinate System**
-- **Centralized API**: `mapPositioning.ts` for all positioning
-- **Type Safety**: TypeScript interfaces for reliability
-- **Predefined Cities**: 32 major Canadian cities
-- **Consistent Transformation**: Same logic as weather data grid
-
-## Getting Started
-
-### **Prerequisites**
-- Node.js 18+ and npm
-- Python 3.12+
-- SQLite 3
-
-### **Installation**
-```bash
-# Clone repository
-git clone <repository-url>
-cd cirrus-project
-
-# Weather Data Service setup
-cd weather-data-service
-pip install -r requirements.txt
-python3 api.py
-
-# Frontend setup
-cd frontend
-npm install
-npm start
-```
-
-### **Access**
-- **Frontend**: http://localhost:3000
-- **Weather Data Service API**: http://localhost:8000
-- **API Docs**: http://localhost:8000/docs
+2. **Access the API**
+   - API: http://localhost:8000
+   - Docs: http://localhost:8000/docs
+   - Health: http://localhost:8000/health
 
 ## API Endpoints
 
-### **Weather Data**
-- **`GET /api/weather/grid`**: Sampled weather data (1000 points)
-- **`GET /api/weather/grid/full`**: All 19,008 points
-- **`GET /api/weather/stats`**: Coverage statistics
+- `GET /health` - Service health check
+- `GET /stations` - List all weather stations
+- `GET /stations/{station_id}` - Get specific station details
+- `GET /weather-data` - Get weather data summary
+- `POST /collect/year` - Trigger manual data collection
+- `GET /status` - Get collection status
+- `GET /docs` - Interactive API documentation
 
-### **Parameters**
-- **`sample_size`**: Number of points to return
-- **`region`**: Filter by specific region
-- **`temperature_min/max`**: Filter by temperature range
+## Environment Variables
 
-## Data Status
+- `NOAA_CDO_TOKEN` - NOAA Climate Data Online API token (required)
+- `DATABASE_URL` - PostgreSQL connection string (for cloud deployment)
+- `DATABASE_PATH` - SQLite database path (for local development)
+- `ENVIRONMENT` - Environment (development/production)
+- `API_HOST` - API host (default: 0.0.0.0)
+- `API_PORT` - API port (default: 8000)
 
-### **Current Coverage**
-- **Total Grid Points**: 19,008
-- **Weather Data Points**: 400 (2.1% coverage)
-- **Data Regions**: US-Border (12.1%), Ontario (5.6%), Maritime (22.8%)
-- **Temperature Range**: 5.1°C to 26.0°C (average 16.1°C)
+## Data Collection
 
-### **Regional Breakdown**
-| Region | Total Points | Data Points | Coverage |
-|--------|-------------|-------------|----------|
-| NU | 3,817 | 0 | 0.0% |
-| NT | 2,520 | 0 | 0.0% |
-| Arctic | 2,059 | 0 | 0.0% |
-| US-Border | 1,740 | 210 | 12.1% |
-| QC | 1,689 | 0 | 0.0% |
-| ON | 1,656 | 92 | 5.6% |
-| BC | 1,539 | 0 | 0.0% |
-| Maritime | 430 | 98 | 22.8% |
-| Others | 3,558 | 0 | 0.0% |
+The service automatically collects weather data from:
+- **Daily Summaries (GHCND)** - Temperature, precipitation, wind, pressure
+- **Hourly Precipitation (PRECIP_HLY)** - Detailed precipitation data
+- **Daily Normals (NORMAL_DLY)** - Historical averages and extremes
 
-## Development Roadmap
+## Deployment
 
-### **Phase 1: Data Collection** (Current)
-- [x] Grid system implementation
-- [x] Coordinate transformation system
-- [x] API integration framework
-- [ ] Full dataset population (blocked by API limits)
+### Railway (Recommended)
 
-### **Phase 2: UI Experiments** (Pending Data)
-- [ ] Temperature area visualization
-- [ ] Heat map implementation
-- [ ] Regional analysis tools
-- [ ] Interactive data exploration
+1. **Connect to Railway**
+   - Go to [railway.app](https://railway.app)
+   - Connect your GitHub account
+   - Deploy from this repository
 
-### **Phase 3: AI Development** (Pending Data)
-- [ ] Machine learning model training
-- [ ] Pattern recognition algorithms
-- [ ] Predictive weather analysis
-- [ ] Anomaly detection
+2. **Add PostgreSQL database**
+   - Add PostgreSQL service in Railway dashboard
+   - Set `DATABASE_URL` environment variable
 
-### **Phase 4: Production** (Future)
-- [ ] Performance optimization
-- [ ] Real-time data streaming
-- [ ] Advanced visualizations
-- [ ] Mobile responsiveness
+3. **Set environment variables**
+   - `NOAA_CDO_TOKEN` - Your NOAA API token
+   - `ENVIRONMENT=production`
 
-## Technical Constraints
+### Other Platforms
 
-### **API Limitations**
-- **Open-Meteo**: Daily rate limit (currently exceeded)
-- **Environment Canada**: Connectivity issues
-- **OpenWeather**: Requires API key configuration
-- **Weather Unlocked**: Disabled due to connectivity issues
+- **Docker** - Use the included Dockerfile
+- **Heroku** - Use the Procfile
+- **AWS/GCP** - Use Docker containers
 
-### **Data Dependencies**
-- **UI Experiments**: Require full dataset (19,008 points)
-- **AI Development**: Need complete weather data
-- **Regional Analysis**: Require data across all regions
-- **Predictive Features**: Need historical data patterns
+## Architecture
 
-## Documentation
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   NOAA API      │───▶│  Weather Service │───▶│   PostgreSQL    │
+│   (Data Source) │    │   (Collection)   │    │   (Storage)     │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+                              │
+                              ▼
+                       ┌──────────────────┐
+                       │   FastAPI        │
+                       │   (REST API)     │
+                       └──────────────────┘
+```
 
-### **System Documentation**
-- **`docs/current-status.md`**: Current project status and limitations
-- **`docs/data-pool-architecture.md`**: Data collection system details
-- **`docs/dev-logs/`**: Development progress logs
-- **`docs/chat-records/`**: Project discussion records
+## Development
 
-### **Code Documentation**
-- **`frontend/src/utils/README-mapPositioning.md`**: Coordinate system guide
-- **`weather-data-service/`**: Weather data collection and API implementations
-- **`frontend/src/components/`**: React component documentation
+### Project Structure
 
-## Contributing
+```
+weather-data-service/
+├── api.py                 # FastAPI application
+├── collection.py          # Data collection logic
+├── station.py            # Single station data retrieval
+├── stations_database.py  # Station database operations
+├── weather_database.py   # Weather data operations
+├── main.py              # Daily collection entry point
+├── init_database.py     # Database initialization
+├── requirements.txt     # Python dependencies
+├── Dockerfile          # Docker configuration
+├── railway.json        # Railway deployment config
+└── README.md           # This file
+```
 
-### **Development Guidelines**
-1. **Follow TypeScript**: Use strict typing throughout
-2. **Document Decisions**: Record architectural choices
-3. **Test Thoroughly**: Verify coordinate accuracy
-4. **Consider Performance**: Optimize for large datasets
+### Contributing
 
-### **Code Style**
-- **Frontend**: React functional components with hooks
-- **Backend**: FastAPI with async/await patterns
-- **Database**: SQLite with proper indexing
-- **Documentation**: Comprehensive README files
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
 ## License
 
-This project is developed for portfolio demonstration and Canadian immigration purposes.
+This project is part of the Cirrus Project for Canadian weather prediction.
 
-## Contact
+## Support
 
-For questions about the project architecture or development approach, refer to the documentation in the `docs/` directory.
+For issues and questions:
+- Check the API documentation at `/docs`
+- Review the logs for error details
+- Open an issue on GitHub
 
 ---
 
-**Note**: This project is currently limited by API rate limits. Full functionality requires waiting for API reset or implementing alternative data sources.
+**Built for the Cirrus Project - AI Weather Prediction System**

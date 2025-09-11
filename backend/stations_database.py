@@ -6,11 +6,14 @@ This module handles all operations related to the stations database,
 including station lookup, metadata management, and active period tracking.
 """
 
+import sqlite3
 import json
 from datetime import datetime, timedelta
 from typing import List, Tuple, Dict, Optional
 from pathlib import Path
-from database_config import get_database_connection
+
+# Database path
+DATABASE_PATH = Path(__file__).parent / "data" / "weather_pool.db"
 
 def update_active_periods(station_id: str, station_data: Dict[str, List[Dict]]) -> None:
     """
@@ -116,25 +119,23 @@ def _get_existing_periods(station_id: str) -> List[Tuple[str, str, int]]:
         List of tuples (start_date, end_date, day_count)
     """
     try:
-        conn = get_database_connection()
-        cursor = conn.cursor()
-        
-        # Check if the station exists and has active_periods data
-        cursor.execute("""
-            SELECT active_periods FROM all_canadian_stations 
-            WHERE station_id = ?
-        """, (station_id,))
-        
-        result = cursor.fetchone()
-        if not result or not result[0]:
-            conn.close()
-            return []
-        
-        # Parse JSON data
-        periods_data = json.loads(result[0])
-        conn.close()
-        return [(period['start'], period['end'], period['days']) for period in periods_data]
-        
+        with sqlite3.connect(DATABASE_PATH) as conn:
+            cursor = conn.cursor()
+            
+            # Check if the station exists and has active_periods data
+            cursor.execute("""
+                SELECT active_periods FROM all_canadian_stations 
+                WHERE station_id = ?
+            """, (station_id,))
+            
+            result = cursor.fetchone()
+            if not result or not result[0]:
+                return []
+            
+            # Parse JSON data
+            periods_data = json.loads(result[0])
+            return [(period['start'], period['end'], period['days']) for period in periods_data]
+            
     except Exception as e:
         print(f"❌ Error getting existing periods for {station_id}: {e}")
         return []
@@ -202,34 +203,32 @@ def _update_database_periods(station_id: str, periods: List[Tuple[str, str, int]
         periods: List of merged periods (start, end, days)
     """
     try:
-        conn = get_database_connection()
-        cursor = conn.cursor()
-        
-        # Convert periods to JSON format
-        periods_json = json.dumps([
-            {
-                'start': start,
-                'end': end,
-                'days': days
-            }
-            for start, end, days in periods
-        ])
-        
-        # Update the station record
-        cursor.execute("""
-            UPDATE all_canadian_stations 
-            SET active_periods = ?
-            WHERE station_id = ?
-        """, (periods_json, station_id))
-        
-        if cursor.rowcount == 0:
-            print(f"⚠️  Station {station_id} not found in database")
-        else:
-            conn.commit()
-            print(f"✅ Updated database with {len(periods)} active periods for {station_id}")
-        
-        conn.close()
-        
+        with sqlite3.connect(DATABASE_PATH) as conn:
+            cursor = conn.cursor()
+            
+            # Convert periods to JSON format
+            periods_json = json.dumps([
+                {
+                    'start': start,
+                    'end': end,
+                    'days': days
+                }
+                for start, end, days in periods
+            ])
+            
+            # Update the station record
+            cursor.execute("""
+                UPDATE all_canadian_stations 
+                SET active_periods = ?
+                WHERE station_id = ?
+            """, (periods_json, station_id))
+            
+            if cursor.rowcount == 0:
+                print(f"⚠️  Station {station_id} not found in database")
+            else:
+                conn.commit()
+                print(f"✅ Updated database with {len(periods)} active periods for {station_id}")
+                
     except Exception as e:
         print(f"❌ Error updating database for {station_id}: {e}")
 
@@ -244,31 +243,29 @@ def get_station_info(station_id: str) -> Optional[Dict]:
         Dictionary with station information or None if not found
     """
     try:
-        conn = get_database_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            SELECT station_id, name, latitude, longitude, elevation, active_periods
-            FROM all_canadian_stations 
-            WHERE station_id = ?
-            """,
-            (station_id,)
-        )
-        result = cursor.fetchone()
-        
-        if result:
-            conn.close()
-            return {
-                "station_id": result[0],
-                "name": result[1],
-                "latitude": result[2],
-                "longitude": result[3],
-                "elevation": result[4],
-                "active_periods": json.loads(result[5]) if result[5] else []
-            }
-        conn.close()
-        return None
-        
+        with sqlite3.connect(DATABASE_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT station_id, name, latitude, longitude, elevation, active_periods
+                FROM all_canadian_stations 
+                WHERE station_id = ?
+                """,
+                (station_id,)
+            )
+            result = cursor.fetchone()
+            
+            if result:
+                return {
+                    "station_id": result[0],
+                    "name": result[1],
+                    "latitude": result[2],
+                    "longitude": result[3],
+                    "elevation": result[4],
+                    "active_periods": json.loads(result[5]) if result[5] else []
+                }
+            return None
+            
     except Exception as e:
         print(f"❌ Error getting station info for {station_id}: {e}")
         return None

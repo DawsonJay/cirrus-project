@@ -6,14 +6,11 @@ This module handles all operations related to the weather database,
 including data storage, retrieval, and management of weather records.
 """
 
-import sqlite3
 import json
 from datetime import datetime
 from typing import List, Dict, Optional, Any
 from pathlib import Path
-
-# Database path
-DATABASE_PATH = Path(__file__).parent / "data" / "weather_pool.db"
+from database_config import get_database_connection
 
 def store_station_data(station_id: str, station_data: Dict[str, List[Dict]]) -> None:
     """
@@ -224,25 +221,28 @@ def _store_daily_records(records: List[Dict]) -> None:
         return
     
     try:
-        with sqlite3.connect(DATABASE_PATH) as conn:
-            cursor = conn.cursor()
-            
-            # Prepare insert statement
-            columns = list(records[0].keys())
-            placeholders = ', '.join(['?' for _ in columns])
-            insert_sql = f"""
-                INSERT OR REPLACE INTO daily_weather_data 
-                ({', '.join(columns)}) 
-                VALUES ({placeholders})
-            """
-            
-            # Insert records
-            for record in records:
-                values = [record.get(col) for col in columns]
-                cursor.execute(insert_sql, values)
-            
-            conn.commit()
-            
+        conn = get_database_connection()
+        cursor = conn.cursor()
+        
+        # Prepare insert statement with PostgreSQL ON CONFLICT syntax
+        columns = list(records[0].keys())
+        placeholders = ', '.join(['%s' for _ in columns])  # PostgreSQL uses %s, not ?
+        insert_sql = f"""
+            INSERT INTO daily_weather_data 
+            ({', '.join(columns)}) 
+            VALUES ({placeholders})
+            ON CONFLICT (station_id, date) 
+            DO UPDATE SET {', '.join([f"{col} = EXCLUDED.{col}" for col in columns if col not in ['station_id', 'date']])}
+        """
+        
+        # Insert records
+        for record in records:
+            values = [record.get(col) for col in columns]
+            cursor.execute(insert_sql, values)
+        
+        conn.commit()
+        conn.close()
+        
     except Exception as e:
         print(f"❌ Error storing daily records: {e}")
 
@@ -258,67 +258,68 @@ def get_weather_data_summary(year: Optional[int] = None, station_id: Optional[st
         Dictionary with summary statistics
     """
     try:
-        with sqlite3.connect(DATABASE_PATH) as conn:
-            cursor = conn.cursor()
-            
-            # Build WHERE clause
-            where_conditions = []
-            params = []
-            
-            if year:
-                where_conditions.append("strftime('%Y', date) = ?")
-                params.append(str(year))
-            
-            if station_id:
-                where_conditions.append("station_id = ?")
-                params.append(station_id)
-            
-            where_clause = ""
-            if where_conditions:
-                where_clause = "WHERE " + " AND ".join(where_conditions)
-            
-            # Get total records
-            cursor.execute(f"SELECT COUNT(*) FROM daily_weather_data {where_clause}", params)
-            total_records = cursor.fetchone()[0]
-            
-            # Get number of stations with data
-            cursor.execute(f"SELECT COUNT(DISTINCT station_id) FROM daily_weather_data {where_clause}", params)
-            stations_with_data = cursor.fetchone()[0]
-            
-            # Get date range
-            cursor.execute(f"SELECT MIN(date), MAX(date) FROM daily_weather_data {where_clause}", params)
-            date_range = cursor.fetchone()
-            min_date, max_date = date_range if date_range[0] else (None, None)
-            
-            # Get sample records
-            cursor.execute(f"""
-                SELECT station_id, date, temperature_avg, precipitation, wind_speed_avg
-                FROM daily_weather_data 
-                {where_clause}
-                ORDER BY date DESC 
-                LIMIT 5
-            """, params)
-            sample_records = [
-                {
-                    "station_id": row[0],
-                    "date": row[1],
-                    "temperature_avg": row[2],
-                    "precipitation": row[3],
+        conn = get_database_connection()
+        cursor = conn.cursor()
+        
+        # Build WHERE clause
+        where_conditions = []
+        params = []
+        
+        if year:
+            where_conditions.append("EXTRACT(YEAR FROM date) = %s")
+            params.append(year)
+        
+        if station_id:
+            where_conditions.append("station_id = %s")
+            params.append(station_id)
+        
+        where_clause = ""
+        if where_conditions:
+            where_clause = "WHERE " + " AND ".join(where_conditions)
+        
+        # Get total records
+        cursor.execute(f"SELECT COUNT(*) FROM daily_weather_data {where_clause}", params)
+        total_records = cursor.fetchone()[0]
+        
+        # Get number of stations with data
+        cursor.execute(f"SELECT COUNT(DISTINCT station_id) FROM daily_weather_data {where_clause}", params)
+        stations_with_data = cursor.fetchone()[0]
+        
+        # Get date range
+        cursor.execute(f"SELECT MIN(date), MAX(date) FROM daily_weather_data {where_clause}", params)
+        date_range = cursor.fetchone()
+        min_date, max_date = date_range if date_range[0] else (None, None)
+        
+        # Get sample records
+        cursor.execute(f"""
+            SELECT station_id, date, temperature_avg, precipitation, wind_speed_avg
+            FROM daily_weather_data 
+            {where_clause}
+            ORDER BY date DESC 
+            LIMIT 5
+        """, params)
+        sample_records = [
+            {
+                "station_id": row[0],
+                "date": row[1],
+                "temperature_avg": row[2],
+                "precipitation": row[3],
                     "wind_speed_avg": row[4]
                 }
                 for row in cursor.fetchall()
             ]
             
-            return {
-                "total_records": total_records,
-                "stations_with_data": stations_with_data,
-                "date_range": {
-                    "min_date": min_date,
-                    "max_date": max_date
-                },
-                "sample_records": sample_records
-            }
-            
+        conn.close()
+        return {
+            "total_records": total_records,
+            "stations_with_data": stations_with_data,
+            "date_range": {
+                "min_date": min_date,
+                "max_date": max_date
+            },
+            "sample_records": sample_records
+        }
+        
     except Exception as e:
         print(f"❌ Error getting weather data summary: {e}")
         return {

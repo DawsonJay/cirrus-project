@@ -9,9 +9,9 @@ It will be the foundation for our data collection system.
 import asyncio
 import aiohttp
 import random
-import os
 from datetime import datetime, date, timedelta
 from typing import List, Dict, Optional
+from app.config import settings
 
 async def make_api_call_with_retry(session: aiohttp.ClientSession, url: str, params: dict, headers: dict, max_retries: int = 5) -> Optional[aiohttp.ClientResponse]:
     """
@@ -29,36 +29,36 @@ async def make_api_call_with_retry(session: aiohttp.ClientSession, url: str, par
     """
     for attempt in range(max_retries + 1):
         try:
-            response = await session.get(url, params=params, headers=headers)
-            if response.status == 200:
-                return response
-            elif response.status == 429:  # Rate limit exceeded
-                if attempt < max_retries:
-                    # Exponential backoff with jitter: 2^attempt + random(0, 1)
-                    base_delay = 2 ** attempt
-                    jitter = random.uniform(0, 1)
-                    delay = min(base_delay + jitter, 600)  # Cap at 10 minutes
-                    
-                    print(f"  ⚠️  Rate limit exceeded (429), retrying in {delay:.1f}s (attempt {attempt + 1}/{max_retries + 1})")
-                    await asyncio.sleep(delay)
-                    continue
-                else:
-                    print(f"  ❌ Rate limit exceeded, max retries ({max_retries}) reached")
+            async with session.get(url, params=params, headers=headers) as response:
+                if response.status == 200:
                     return response
-            elif response.status == 503:  # Service unavailable
-                if attempt < max_retries:
-                    # Shorter delay for 503 errors
-                    delay = min(30 + (attempt * 10), 300)  # 30s to 5min max
-                    print(f"  ⚠️  Service unavailable (503), retrying in {delay}s (attempt {attempt + 1}/{max_retries + 1})")
-                    await asyncio.sleep(delay)
-                    continue
+                elif response.status == 429:  # Rate limit exceeded
+                    if attempt < max_retries:
+                        # Exponential backoff with jitter: 2^attempt + random(0, 1)
+                        base_delay = 2 ** attempt
+                        jitter = random.uniform(0, 1)
+                        delay = min(base_delay + jitter, 600)  # Cap at 10 minutes
+                        
+                        print(f"  ⚠️  Rate limit exceeded (429), retrying in {delay:.1f}s (attempt {attempt + 1}/{max_retries + 1})")
+                        await asyncio.sleep(delay)
+                        continue
+                    else:
+                        print(f"  ❌ Rate limit exceeded, max retries ({max_retries}) reached")
+                        return response
+                elif response.status == 503:  # Service unavailable
+                    if attempt < max_retries:
+                        # Shorter delay for 503 errors
+                        delay = min(30 + (attempt * 10), 300)  # 30s to 5min max
+                        print(f"  ⚠️  Service unavailable (503), retrying in {delay}s (attempt {attempt + 1}/{max_retries + 1})")
+                        await asyncio.sleep(delay)
+                        continue
+                    else:
+                        print(f"  ❌ Service unavailable, max retries ({max_retries}) reached")
+                        return response
                 else:
-                    print(f"  ❌ Service unavailable, max retries ({max_retries}) reached")
+                    # Other errors (400, 404, etc.) - don't retry
+                    print(f"  ❌ API error {response.status}")
                     return response
-            else:
-                # Other errors (400, 404, etc.) - don't retry
-                print(f"  ❌ API error {response.status}")
-                return response
                     
         except asyncio.TimeoutError:
             if attempt < max_retries:
@@ -111,19 +111,16 @@ async def get_station_data_year_by_dataset(station_id: str, year: int, dataset_i
             
             # Make API call for current date range
             url = "https://www.ncei.noaa.gov/cdo-web/api/v2/data"
-            # Strip GHCND: prefix from station_id for NOAA API
-            clean_station_id = station_id.replace('GHCND:', '') if station_id.startswith('GHCND:') else station_id
-            
             params = {
                 'datasetid': dataset_id,
-                'stationid': clean_station_id,
+                'stationid': station_id,
                 'startdate': start_date,
                 'enddate': current_end_date,
                 'limit': 1000,
                 'sortfield': 'date',
                 'sortorder': 'desc'
             }
-            headers = {'token': os.getenv('NOAA_CDO_TOKEN')}
+            headers = {'token': settings.NOAA_CDO_TOKEN}
             
             # Add timeout to prevent hanging
             timeout = aiohttp.ClientTimeout(total=30)  # 30 second timeout per request

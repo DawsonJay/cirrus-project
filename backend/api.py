@@ -63,7 +63,7 @@ class StationInfo(BaseModel):
     name: str
     latitude: float
     longitude: float
-    elevation: Optional[float] = None
+    elevation: float
     active_periods: List[Dict[str, Any]]
 
 class WeatherDataSummary(BaseModel):
@@ -146,65 +146,6 @@ async def health_check():
         "timestamp": datetime.now().isoformat(),
         "running_collections": len([c for c in running_collections.values() if c["status"] == "running"])
     }
-
-@app.get("/debug/token")
-async def debug_token():
-    """Debug endpoint to check NOAA token status"""
-    import os
-    token = os.getenv('NOAA_CDO_TOKEN')
-    return {
-        "token_set": token is not None,
-        "token_length": len(token) if token else 0,
-        "token_preview": f"{token[:10]}..." if token and len(token) > 10 else token
-    }
-
-@app.get("/debug/tables")
-async def debug_tables():
-    """Debug endpoint to check database tables"""
-    try:
-        import os
-        from database_config import get_database_connection
-        
-        # Check environment variables
-        database_url = os.getenv('DATABASE_URL')
-        
-        conn = get_database_connection()
-        cursor = conn.cursor()
-        
-        # Try to detect database type
-        try:
-            # PostgreSQL query
-            cursor.execute("""
-                SELECT table_name 
-                FROM information_schema.tables 
-                WHERE table_schema = 'public'
-            """)
-            tables = [row[0] for row in cursor.fetchall()]
-            db_type = "PostgreSQL"
-        except:
-            # SQLite query
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-            tables = [row[0] for row in cursor.fetchall()]
-            db_type = "SQLite"
-        
-        # Get table counts
-        table_counts = {}
-        for table in tables:
-            cursor.execute(f"SELECT COUNT(*) FROM {table}")
-            count = cursor.fetchone()[0]
-            table_counts[table] = count
-        
-        conn.close()
-        
-        return {
-            "database_type": db_type,
-            "database_url_set": database_url is not None,
-            "tables": tables,
-            "table_counts": table_counts,
-            "total_tables": len(tables)
-        }
-    except Exception as e:
-        return {"error": str(e)}
 
 @app.post("/collect/year", response_model=CollectionStatus)
 async def start_year_collection(

@@ -19,6 +19,7 @@ sys.path.insert(0, str(backend_dir))
 from collection import collect_year
 from app.config import settings
 from automated_maintenance import AutomatedMaintenance
+from startup_load_stations import main as load_stations
 
 async def daily_collection():
     """
@@ -210,6 +211,12 @@ async def main():
     if not os.getenv('NOAA_CDO_TOKEN'):
         print("❌ Error: NOAA_CDO_TOKEN environment variable is required")
         print("   Set it with: export NOAA_CDO_TOKEN=your_token_here")
+        return 1
+    
+    # Ensure stations are loaded before collection
+    print("🇨🇦 Ensuring Canadian stations are loaded...")
+    if not load_stations():
+        print("❌ Failed to load stations")
         return 1
     
     # Run daily collection

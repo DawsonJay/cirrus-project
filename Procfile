@@ -1,1 +1,1 @@
-web: cd weather-data-service && python3 api.py
+web: python3 api.py

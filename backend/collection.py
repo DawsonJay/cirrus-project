@@ -7,6 +7,7 @@ It provides functions to collect data for specific years, stations, or date rang
 """
 
 import asyncio
+import sqlite3
 import json
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Tuple, Any
@@ -16,7 +17,9 @@ from station import collect_station_data_year
 from stations_database import update_active_periods
 from weather_database import store_station_data
 from app.config import settings
-from database_config import get_database_connection
+
+# Database path
+DATABASE_PATH = Path(__file__).parent / "data" / "weather_pool.db"
 
 async def collect_year(year: int, limit: Optional[int] = None) -> Dict[str, any]:
     """
@@ -324,32 +327,31 @@ def get_all_stations(limit: Optional[int] = None) -> List[Dict]:
         List of station dictionaries
     """
     try:
-        conn = get_database_connection()
-        cursor = conn.cursor()
-        
-        query = "SELECT station_id, name, latitude, longitude, elevation, active_periods FROM all_canadian_stations ORDER BY name"
-        if limit:
-            query += f" LIMIT {limit}"
-        
-        cursor.execute(query)
-        columns = [description[0] for description in cursor.description]
-        stations = []
-        
-        for row in cursor.fetchall():
-            station = dict(zip(columns, row))
-            # Parse active_periods JSON
-            if station.get('active_periods'):
-                try:
-                    station['active_periods'] = json.loads(station['active_periods'])
-                except json.JSONDecodeError:
+        with sqlite3.connect(DATABASE_PATH) as conn:
+            cursor = conn.cursor()
+            
+            query = "SELECT station_id, name, latitude, longitude, elevation, active_periods FROM all_canadian_stations ORDER BY name"
+            if limit:
+                query += f" LIMIT {limit}"
+            
+            cursor.execute(query)
+            columns = [description[0] for description in cursor.description]
+            stations = []
+            
+            for row in cursor.fetchall():
+                station = dict(zip(columns, row))
+                # Parse active_periods JSON
+                if station.get('active_periods'):
+                    try:
+                        station['active_periods'] = json.loads(station['active_periods'])
+                    except json.JSONDecodeError:
+                        station['active_periods'] = []
+                else:
                     station['active_periods'] = []
-            else:
-                station['active_periods'] = []
-            stations.append(station)
-        
-        conn.close()
-        return stations
-        
+                stations.append(station)
+            
+            return stations
+            
     except Exception as e:
         print(f"❌ Error getting stations from database: {e}")
         return []
@@ -365,15 +367,13 @@ def get_total_records_count(year: int) -> int:
         Total number of records
     """
     try:
-        conn = get_database_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT COUNT(*) FROM daily_weather_data WHERE EXTRACT(YEAR FROM date) = %s",
-            (year,)
-        )
-        result = cursor.fetchone()[0]
-        conn.close()
-        return result
+        with sqlite3.connect(DATABASE_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT COUNT(*) FROM daily_weather_data WHERE strftime('%Y', date) = ?",
+                (str(year),)
+            )
+            return cursor.fetchone()[0]
     except Exception as e:
         print(f"❌ Error counting records: {e}")
         return 0

@@ -11,28 +11,25 @@ Can be run locally or in Docker containers.
 """
 
 import asyncio
-import sqlite3
 import os
 from pathlib import Path
 from typing import Dict, Any
 from app.config import settings
+from database_config import get_database_connection
 
 def create_database_tables():
     """Create all required database tables"""
     print("🗄️  Creating database tables...")
     
-    # Ensure data directory exists
-    data_dir = Path("data")
-    data_dir.mkdir(exist_ok=True)
-    
-    db_path = data_dir / "weather_pool.db"
-    conn = sqlite3.connect(str(db_path))
+    # Use the database configuration that handles both SQLite and PostgreSQL
+    conn = get_database_connection()
     cursor = conn.cursor()
     
     # Create all_canadian_stations table (used by current codebase)
+    # Use PostgreSQL-compatible syntax
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS all_canadian_stations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             station_id VARCHAR(50) UNIQUE NOT NULL,
             name VARCHAR(255),
             latitude REAL,
@@ -53,7 +50,7 @@ def create_database_tables():
     # Create daily_weather_data table (used by current codebase)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS daily_weather_data (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             station_id VARCHAR(50) NOT NULL,
             date DATE NOT NULL,
             temperature_max REAL,
@@ -97,8 +94,8 @@ def add_sample_stations():
     """Add some sample Canadian weather stations for testing"""
     print("📡 Adding sample Canadian weather stations...")
     
-    db_path = Path("data") / "weather_pool.db"
-    conn = sqlite3.connect(str(db_path))
+    # Use the database configuration that handles both SQLite and PostgreSQL
+    conn = get_database_connection()
     cursor = conn.cursor()
     
     # Sample Canadian weather stations
@@ -182,10 +179,24 @@ def add_sample_stations():
     
     for station in sample_stations:
         cursor.execute('''
-            INSERT OR REPLACE INTO all_canadian_stations (
+            INSERT INTO all_canadian_stations (
                 station_id, name, latitude, longitude, elevation, state, country,
                 wmo_id, gsn_flag, hcn_flag, first_year, last_year, active_periods
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (station_id) 
+            DO UPDATE SET 
+                name = EXCLUDED.name,
+                latitude = EXCLUDED.latitude,
+                longitude = EXCLUDED.longitude,
+                elevation = EXCLUDED.elevation,
+                state = EXCLUDED.state,
+                country = EXCLUDED.country,
+                wmo_id = EXCLUDED.wmo_id,
+                gsn_flag = EXCLUDED.gsn_flag,
+                hcn_flag = EXCLUDED.hcn_flag,
+                first_year = EXCLUDED.first_year,
+                last_year = EXCLUDED.last_year,
+                active_periods = EXCLUDED.active_periods
         ''', (
             station['station_id'],
             station['name'],
@@ -208,47 +219,63 @@ def add_sample_stations():
 
 def get_database_stats() -> Dict[str, Any]:
     """Get database statistics"""
-    db_path = Path("data") / "weather_pool.db"
-    conn = sqlite3.connect(str(db_path))
-    cursor = conn.cursor()
-    
-    # Count stations
-    cursor.execute('SELECT COUNT(*) FROM all_canadian_stations')
-    station_count = cursor.fetchone()[0]
-    
-    # Count weather records
-    cursor.execute('SELECT COUNT(*) FROM daily_weather_data')
-    weather_count = cursor.fetchone()[0]
-    
-    # Date range
-    cursor.execute('SELECT MIN(first_year), MAX(last_year) FROM all_canadian_stations')
-    date_range = cursor.fetchone()
-    
-    # Geographic coverage
-    cursor.execute('''
-        SELECT 
-            MIN(latitude), MAX(latitude), 
-            MIN(longitude), MAX(longitude)
-        FROM all_canadian_stations
-    ''')
-    geo_coverage = cursor.fetchone()
-    
-    conn.close()
-    
-    return {
-        'stations': station_count,
-        'weather_records': weather_count,
-        'date_range': {
-            'first_year': date_range[0],
-            'last_year': date_range[1]
-        },
-        'geographic_coverage': {
-            'min_lat': geo_coverage[0],
-            'max_lat': geo_coverage[1],
-            'min_lon': geo_coverage[2],
-            'max_lon': geo_coverage[3]
+    try:
+        conn = get_database_connection()
+        cursor = conn.cursor()
+        
+        # Count stations
+        cursor.execute('SELECT COUNT(*) FROM all_canadian_stations')
+        station_count = cursor.fetchone()[0]
+        
+        # Count weather records
+        cursor.execute('SELECT COUNT(*) FROM daily_weather_data')
+        weather_count = cursor.fetchone()[0]
+        
+        # Date range
+        cursor.execute('SELECT MIN(first_year), MAX(last_year) FROM all_canadian_stations')
+        date_range = cursor.fetchone()
+        
+        # Geographic coverage
+        cursor.execute('''
+            SELECT 
+                MIN(latitude), MAX(latitude), 
+                MIN(longitude), MAX(longitude)
+            FROM all_canadian_stations
+        ''')
+        geo_coverage = cursor.fetchone()
+        
+        conn.close()
+        
+        return {
+            'stations': station_count,
+            'weather_records': weather_count,
+            'date_range': {
+                'first_year': date_range[0],
+                'last_year': date_range[1]
+            },
+            'geographic_coverage': {
+                'min_lat': geo_coverage[0],
+                'max_lat': geo_coverage[1],
+                'min_lon': geo_coverage[2],
+                'max_lon': geo_coverage[3]
+            }
         }
-    }
+    except Exception as e:
+        print(f"❌ Error getting database stats: {e}")
+        return {
+            'stations': 0,
+            'weather_records': 0,
+            'date_range': {
+                'first_year': None,
+                'last_year': None
+            },
+            'geographic_coverage': {
+                'min_lat': None,
+                'max_lat': None,
+                'min_lon': None,
+                'max_lon': None
+            }
+        }
 
 def main():
     """Initialize the database"""
