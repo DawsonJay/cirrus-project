@@ -21,7 +21,7 @@ export const GridDataProvider: React.FC<GridDataProviderProps> = ({ children }) 
   const [error, setError] = useState<string | null>(null);
 
   /**
-   * Loads grid data from the backend API and transforms coordinates to SVG
+   * Loads grid data from the weather data service API and transforms coordinates to SVG
    * @param sampleSize - Number of points to load (default: 10000)
    */
   const loadGridData = async (sampleSize: number = 10000) => {

@@ -1,0 +1,19 @@
+[Unit]
+Description=Weather Data Collection Service
+Documentation=https://github.com/your-username/cirrus-project
+After=network.target
+
+[Service]
+Type=oneshot
+User=weather
+Group=weather
+WorkingDirectory=/home/james/Documents/cirrus-project/backend
+Environment=NOAA_CDO_TOKEN=your_token_here
+Environment=DATABASE_PATH=/home/james/Documents/cirrus-project/backend/data/weather_pool.db
+Environment=ENVIRONMENT=production
+ExecStart=/usr/bin/python3 /home/james/Documents/cirrus-project/backend/main.py
+StandardOutput=append:/home/james/Documents/cirrus-project/backend/logs/service.log
+StandardError=append:/home/james/Documents/cirrus-project/backend/logs/service.log
+
+[Install]
+WantedBy=multi-user.target

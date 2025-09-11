@@ -31,11 +31,11 @@ The Cirrus Project is a comprehensive Canadian weather prediction system designe
 - **Components**: WeatherDataMap, GridOverlay, RecalibrationOverlay
 - **Coordinate System**: Centralized positioning with `mapPositioning.ts`
 
-### **Backend** (`/backend`)
+### **Weather Data Service** (`/weather-data-service`)
 - **Technology**: FastAPI, Python 3.12, SQLite
-- **APIs**: Open-Meteo, Environment Canada, OpenWeather
-- **Data Processing**: Batch processing with error handling
-- **Database**: 19,008 grid points with weather data storage
+- **APIs**: NOAA Climate Data Online, Environment Canada
+- **Data Processing**: Historical weather data collection and storage
+- **Database**: Canadian weather stations and daily weather records
 
 ### **Data Pool System**
 - **Grid Points**: 19,008 coordinates across Canada
@@ -76,10 +76,10 @@ The Cirrus Project is a comprehensive Canadian weather prediction system designe
 git clone <repository-url>
 cd cirrus-project
 
-# Backend setup
-cd backend
+# Weather Data Service setup
+cd weather-data-service
 pip install -r requirements.txt
-python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+python3 api.py
 
 # Frontend setup
 cd frontend
@@ -89,7 +89,7 @@ npm start
 
 ### **Access**
 - **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8000
+- **Weather Data Service API**: http://localhost:8000
 - **API Docs**: http://localhost:8000/docs
 
 ## API Endpoints
@@ -175,7 +175,7 @@ npm start
 
 ### **Code Documentation**
 - **`frontend/src/utils/README-mapPositioning.md`**: Coordinate system guide
-- **`backend/app/services/`**: API client implementations
+- **`weather-data-service/`**: Weather data collection and API implementations
 - **`frontend/src/components/`**: React component documentation
 
 ## Contributing

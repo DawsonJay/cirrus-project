@@ -20,9 +20,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    command: python3 api.py
+    command: ./docker-start.sh
 
-  # Weather Data Collection Service (Daily)
+  # Weather Data Collector Service (Daily)
   weather-data-collector:
     build:
       context: ./weather-data-service
@@ -38,41 +38,6 @@ services:
     depends_on:
       - weather-data-api
 
-  # Frontend React App
-  frontend:
-    build: ./frontend
-    ports:
-      - "3000:3000"
-    environment:
-      - REACT_APP_API_URL=http://localhost:8000
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    command: npm start
-
-  # PostgreSQL Database
-  db:
-    image: postgres:15
-    environment:
-      - POSTGRES_DB=cirrus_db
-      - POSTGRES_USER=cirrus
-      - POSTGRES_PASSWORD=cirrus
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-
-  # Redis Cache
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-
-
 volumes:
-  postgres_data:
-  redis_data:
   weather_data:
   weather_logs:

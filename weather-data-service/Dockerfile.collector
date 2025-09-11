@@ -1,0 +1,43 @@
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies including cron
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    sqlite3 \
+    cron \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Create logs directory
+RUN mkdir -p /app/logs
+
+# Create cron job to run main.py daily at 2:00 AM
+RUN echo "0 2 * * * cd /app && python3 main.py >> /app/logs/cron.log 2>&1" > /etc/cron.d/weather-collector
+
+# Give execution rights on the cron job
+RUN chmod 0644 /etc/cron.d/weather-collector
+
+# Apply cron job
+RUN crontab /etc/cron.d/weather-collector
+
+# Create the log file to be able to run tail
+RUN touch /app/logs/cron.log
+
+# Expose port (not needed for collector, but kept for consistency)
+EXPOSE 8000
+
+# Start cron in foreground
+CMD ["cron", "-f"]

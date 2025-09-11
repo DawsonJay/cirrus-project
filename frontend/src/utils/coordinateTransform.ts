@@ -148,7 +148,7 @@ export const transformGridToSvg = (points: any[]): GridPoint[] => {
       !isNaN(point.longitude)
     )
     .map(point => {
-      // Handle new backend data format: { id, latitude, longitude, region, temperature_2m, relative_humidity_2m, ... }
+      // Handle new weather data service format: { id, latitude, longitude, region, temperature_2m, relative_humidity_2m, ... }
       const gridPoint: Omit<GridPoint, 'svgX' | 'svgY'> = {
         lat: point.latitude,
         lon: point.longitude,

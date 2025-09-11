@@ -139,7 +139,7 @@ const ResizableWeatherDataMap: React.FC<ResizableWeatherDataMapProps> = ({
     }
   };
 
-  // Fetch grid data from backend
+  // Fetch grid data from weather data service
   useEffect(() => {
     const fetchGridData = async () => {
       try {

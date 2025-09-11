@@ -44,14 +44,14 @@
 ## Data Pool System Architecture
 
 ### **Grid Generation**
-- **File**: `backend/app/services/grid_generator.py`
+- **File**: `weather-data-service/app/services/grid_generator.py`
 - **Method**: Regular 50km spacing grid across Canada
 - **Coverage**: 41°N to 84°N, 141°W to 52°W
 - **Regions**: 16 Canadian regions with proper bounds
 - **Total Points**: 19,008 coordinate points
 
 ### **API Data Collection**
-- **File**: `backend/app/services/batch_updater.py`
+- **File**: `weather-data-service/app/services/batch_updater.py`
 - **Method**: Batch processing with 200 points per request
 - **Rate Limiting**: 1 second delay between batches
 - **Error Handling**: Retry logic and error classification
@@ -88,7 +88,7 @@ weather_alerts (alert_id, title, description, severity, ...)
 ### **Testing Strategy**
 - **Map Alignment**: Verify coordinate system accuracy
 - **Data Display**: Test with available 400 points
-- **System Integration**: Ensure frontend-backend communication
+- **System Integration**: Ensure frontend-weather-data-service communication
 - **Performance**: Test with sampled data (1000 points)
 
 ## Next Steps (When Data Available)

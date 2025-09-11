@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Weather Data Collection daily at 2:00 AM
+Requires=weather-collection.service
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+
+[Install]
+WantedBy=timers.target

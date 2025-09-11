@@ -10,7 +10,7 @@ The Cirrus Project uses a comprehensive data pool system to collect, store, and 
 ## Grid System
 
 ### **Grid Generation**
-- **File**: `backend/app/services/grid_generator.py`
+- **File**: `weather-data-service/app/services/grid_generator.py`
 - **Spacing**: 50km between points
 - **Coverage**: Canada (41°N to 84°N, 141°W to 52°W)
 - **Total Points**: 19,008 coordinate points
