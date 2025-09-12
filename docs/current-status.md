@@ -1,146 +1,151 @@
 # Cirrus Project - Current Status
 
-**Last Updated:** January 9, 2025  
-**Project:** Canadian Weather AI Prediction System  
+**Last Updated:** September 12, 2025  
+**Project:** AI Wildfire Prediction System  
+**Phase:** Data Preparation
+
+## Project Evolution
+
+### Major Architectural Pivots (September 12, 2025)
+
+#### 1. Removed Weather Data Service
+- **Reason**: Unnecessary complexity for AI wildfire prediction
+- **Impact**: Eliminated server infrastructure and ongoing costs
+- **Result**: Simplified to pure AI/ML approach
+
+#### 2. Removed Backend APIs
+- **Reason**: API-based approach conflicted with historical data needs
+- **Impact**: Eliminated real-time data collection and server dependencies
+- **Result**: Focused on one-time data preparation
+
+#### 3. Pivoted to AI/ML Focus
+- **Reason**: Core value is in AI prediction, not data infrastructure
+- **Impact**: Concentrated on machine learning and visualization
+- **Result**: Clear, focused project direction
 
 ## Current System Status
 
 ### ✅ **Completed Components**
-- **Frontend**: React/TypeScript with Material-UI theming
-- **Map System**: SVG-based Canada map with coordinate transformation
-- **Grid System**: 19,008 point regular grid (50km spacing)
-- **Coordinate System**: Centralized positioning system with Mercator projection
-- **Backend API**: FastAPI with SQLite database
-- **Database Schema**: Complete with grid_points, current_weather, forecast_data tables
+- **Project Architecture**: Defined AI wildfire prediction approach
+- **Technical Plan**: Complete implementation roadmap
+- **Data Strategy**: Historical NOAA data processing plan
+- **AI Approach**: XGBoost model selection and design
+- **Frontend Vision**: Interactive map with daily risk visualization
+- **Deployment Strategy**: Static hosting with zero ongoing costs
 
-### ⚠️ **Data Limitations (Critical Blocker)**
+### 🔄 **In Progress**
+- **Data Preparation**: Setting up historical data processing pipeline
+- **Feature Engineering**: Designing wildfire-specific weather features
+- **Model Development**: Preparing XGBoost training environment
 
-#### **Current Data Coverage**
-- **Total Grid Points**: 19,008
-- **Weather Data Points**: 400 (2.1% coverage)
-- **Data Regions**: Only US-Border (12.1%), Ontario (5.6%), Maritime (22.8%)
-- **Temperature Range**: 5.1°C to 26.0°C (average 16.1°C)
+### 📋 **Planned Components**
+- **AI Model Training**: XGBoost wildfire risk prediction
+- **Prediction Generation**: 365 daily risk maps for 2025
+- **Frontend Development**: Interactive SVG map visualization
+- **Static Deployment**: Zero-cost hosting solution
 
-#### **API Rate Limits**
-- **Open-Meteo**: Daily limit exceeded (resets at midnight UTC)
-- **Environment Canada**: Available but has connectivity issues
-- **OpenWeather**: Requires API key (not configured)
-- **Weather Unlocked**: Disabled due to connectivity issues
+## Technical Architecture
 
-### 🚫 **Blocked Development Areas**
-
-#### **UI Experiments**
-- **Temperature Areas**: Cannot implement temperature-based area coloring without full data
-- **Heat Maps**: Insufficient data for meaningful visualization
-- **Regional Analysis**: Limited to 3 regions with partial coverage
-- **Data Visualization**: Current 400 points insufficient for comprehensive analysis
-
-#### **AI Development**
-- **Machine Learning**: Cannot train models without sufficient data
-- **Pattern Recognition**: Need full dataset for meaningful patterns
-- **Predictive Analysis**: Insufficient data for reliable predictions
-- **Model Training**: Requires complete weather data across all regions
-
-## Data Pool System Architecture
-
-### **Grid Generation**
-- **File**: `weather-data-service/app/services/grid_generator.py`
-- **Method**: Regular 50km spacing grid across Canada
-- **Coverage**: 41°N to 84°N, 141°W to 52°W
-- **Regions**: 16 Canadian regions with proper bounds
-- **Total Points**: 19,008 coordinate points
-
-### **API Data Collection**
-- **File**: `weather-data-service/app/services/batch_updater.py`
-- **Method**: Batch processing with 200 points per request
-- **Rate Limiting**: 1 second delay between batches
-- **Error Handling**: Retry logic and error classification
-- **Progress Tracking**: Update logs and statistics
-
-### **Database Structure**
-```sql
--- Grid points (19,008 records)
-grid_points (id, latitude, longitude, region_name)
-
--- Weather data (400 records - 2.1% coverage)
-current_weather (grid_point_id, temperature, humidity, wind_speed, ...)
-
--- Forecast data (empty)
-forecast_data (grid_point_id, forecast_date, temperature_max, ...)
-
--- Weather alerts (empty)
-weather_alerts (alert_id, title, description, severity, ...)
+### Data Pipeline
+```
+NOAA Historical Data → Filter Parameters → Clean & Process → AI Training → Predictions → Static Frontend
 ```
 
-### **API Endpoints**
-- **`/api/weather/grid`**: Sampled data (default 1000 points)
-- **`/api/weather/grid/full`**: All 19,008 points (use with caution)
-- **`/api/weather/stats`**: Coverage statistics and regional breakdown
+### Key Technologies
+- **Data Processing**: Python, pandas, numpy
+- **AI/ML**: XGBoost, scikit-learn
+- **Frontend**: React, TypeScript, SVG
+- **Deployment**: Static hosting (Vercel/Netlify)
 
-## Current Workarounds
+### Data Requirements
+- **Source**: NOAA GHCN-Daily (2015-2025)
+- **Parameters**: TMAX, TMIN, PRCP, SNWD
+- **Size**: ~1.5-2GB (optimized)
+- **Coverage**: All Canadian weather stations
 
-### **Development Approach**
-1. **Use existing 400 data points** for basic functionality testing
-2. **Focus on system architecture** and coordinate transformation
-3. **Prepare for full data** when API limits reset
-4. **Document limitations** to avoid blocked development
+## Success Metrics
 
-### **Testing Strategy**
-- **Map Alignment**: Verify coordinate system accuracy
-- **Data Display**: Test with available 400 points
-- **System Integration**: Ensure frontend-weather-data-service communication
-- **Performance**: Test with sampled data (1000 points)
+### Technical Goals
+- **Model Accuracy**: >80% on historical validation
+- **Prediction Speed**: <1 second per daily map
+- **Data Efficiency**: <2GB total data size
+- **Frontend Performance**: <2 second load times
 
-## Next Steps (When Data Available)
+### Portfolio Goals
+- **Demonstrates**: Full-stack AI development
+- **Shows**: Real-world problem solving
+- **Proves**: Cost optimization skills
+- **Highlights**: Strategic architectural thinking
 
-### **Immediate (After API Reset)**
-1. **Populate Full Dataset**: Run batch updater for all 19,008 points
-2. **Verify Data Quality**: Check temperature ranges and coverage
-3. **Test Performance**: Ensure system handles full dataset
-4. **Update Documentation**: Record actual data coverage
+## Key Decisions Made
 
-### **UI Development**
-1. **Temperature Areas**: Implement area-based temperature visualization
-2. **Heat Maps**: Create smooth temperature gradients
-3. **Regional Analysis**: Build region-specific weather displays
-4. **Interactive Features**: Add hover effects and data exploration
+### Why AI Wildfire Prediction?
+- **Socially Relevant**: Addresses real-world disaster prediction
+- **Technically Interesting**: Combines weather data with machine learning
+- **Visually Compelling**: Interactive maps make great portfolio demos
+- **Cost-Effective**: Zero ongoing costs vs expensive cloud AI
 
-### **AI Development**
-1. **Data Analysis**: Explore patterns in full dataset
-2. **Model Training**: Begin machine learning experiments
-3. **Predictive Features**: Implement weather forecasting
-4. **Pattern Recognition**: Identify weather trends and anomalies
+### Why XGBoost?
+- **Perfect for Tabular Data**: Weather parameters are structured data
+- **Interpretable**: Can explain which factors drive wildfire risk
+- **Efficient**: Fast training and prediction
+- **Reliable**: Handles missing data and outliers well
 
-## Technical Constraints
+### Why Static Deployment?
+- **Zero Costs**: No ongoing hosting expenses
+- **Simple Architecture**: No backend complexity
+- **Fast Performance**: Pre-generated maps load instantly
+- **Easy Maintenance**: No server management needed
 
-### **API Limitations**
-- **Rate Limits**: Open-Meteo daily limit (resets at midnight UTC)
-- **Connectivity**: Environment Canada has intermittent issues
-- **Authentication**: Some APIs require API keys
-- **Reliability**: External dependencies affect data availability
+## Challenges Overcome
 
-### **Performance Considerations**
-- **Database Size**: 19,008 points with weather data
-- **API Response**: Large datasets impact frontend performance
-- **Memory Usage**: Full dataset requires efficient handling
-- **Caching**: Need strategy for frequently accessed data
+### 1. Data Size Constraints
+- **Problem**: 4.4GB database exceeded hosting limits
+- **Solution**: Filter to essential wildfire parameters only
+- **Result**: ~60-70% size reduction to ~1.5-2GB
 
-## Development Recommendations
+### 2. API Dependencies
+- **Problem**: Real-time APIs have rate limits and costs
+- **Solution**: Use historical data with one-time processing
+- **Result**: No ongoing API dependencies or costs
 
-### **Current Phase**
-- **Focus on Architecture**: Complete system design and integration
-- **Test with Limited Data**: Verify functionality with 400 points
-- **Prepare for Scale**: Ensure system can handle full dataset
-- **Document Everything**: Record decisions and limitations
+### 3. Infrastructure Complexity
+- **Problem**: Server-based systems require ongoing maintenance
+- **Solution**: Local processing + static deployment
+- **Result**: Zero ongoing infrastructure costs
 
-### **Future Phase**
-- **Data-Driven Development**: Build features requiring full dataset
-- **AI Integration**: Implement machine learning capabilities
-- **Advanced Visualization**: Create sophisticated weather displays
-- **Performance Optimization**: Optimize for large datasets
+### 4. Project Focus
+- **Problem**: Mixed approaches created confusion
+- **Solution**: Eliminated conflicting architectures
+- **Result**: Clear, focused AI/ML project
 
-## Conclusion
+## Next Steps
 
-The Cirrus Project has a solid technical foundation with a working coordinate system, map display, and data collection infrastructure. However, **data limitations are currently blocking UI experiments and AI development**. The system is ready to scale once API rate limits reset and full data becomes available.
+### Immediate (Week 1)
+1. Set up data processing environment
+2. Download and filter NOAA historical data
+3. Implement feature engineering pipeline
+4. Begin XGBoost model development
 
-**Key Takeaway**: Focus on system architecture and preparation for full data rather than data-dependent features until API limits reset.
+### Short-term (Weeks 2-3)
+1. Complete AI model training
+2. Generate 365 daily predictions
+3. Develop frontend visualization
+4. Test end-to-end workflow
+
+### Long-term (Week 4+)
+1. Deploy static frontend
+2. Optimize performance
+3. Document system
+4. Prepare portfolio presentation
+
+## Portfolio Impact
+
+This project demonstrates:
+- **Strategic Thinking**: Recognizing when approaches become obsolete
+- **Cost Optimization**: $0/month vs $20-25/month alternatives
+- **Technical Focus**: Concentrating on core AI/ML skills
+- **Real-World Application**: Solving actual disaster prediction problems
+- **Architectural Clarity**: Making clean, consistent design decisions
+
+The evolution from a complex weather data service to a focused AI wildfire prediction system shows mature technical judgment and the ability to pivot when better approaches are identified.
