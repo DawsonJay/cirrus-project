@@ -193,6 +193,9 @@ dmypy.json
 data/raw/*.csv
 data/raw/*.json
 data/raw/*.xml
+data/raw/*.txt
+data/raw/*.tar.gz
+data/raw/canadian_stations/
 data/processed/*.csv
 data/processed/*.json
 data/models/*.pkl
