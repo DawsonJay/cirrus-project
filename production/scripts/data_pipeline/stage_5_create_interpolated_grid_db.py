@@ -30,6 +30,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import os
 import sys
 import threading
+import json
 
 warnings.filterwarnings('ignore')
 
@@ -544,20 +545,37 @@ class ParallelSafeInterpolatedGridCreator:
             )
         ''')
         
-        # Wildfire data table (facts only - no risk scores)
+        # Fire events table (one record per fire)
         conn.execute('''
-            CREATE TABLE wildfire_data (
-                cell_id INTEGER,
-                date TEXT,
-                -- Fire facts (not predictions)
-                fire_occurred INTEGER DEFAULT 0,  -- 0 or 1
-                fire_size_ha REAL,                -- NULL if no fire
-                fire_type TEXT,                   -- NULL if no fire
-                fire_id TEXT,                     -- NULL if no fire
-                -- Metadata
+            CREATE TABLE fire_events (
+                fire_id TEXT PRIMARY KEY,
+                center_cell_id INTEGER,
+                start_date TEXT,
+                end_date TEXT,
+                total_size_ha REAL,
+                fire_type TEXT,
+                latitude REAL,
+                longitude REAL,
+                affected_cells TEXT,              -- JSON array of affected cell_ids
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 
-                FOREIGN KEY (cell_id) REFERENCES grid_cells(cell_id)
+                FOREIGN KEY (center_cell_id) REFERENCES grid_cells(cell_id)
+            )
+        ''')
+        
+        # Cell-fire relationships (many-to-many)
+        conn.execute('''
+            CREATE TABLE cell_fire_relationships (
+                cell_id INTEGER,
+                fire_id TEXT,
+                fire_size_ha REAL,                -- Portion of fire in this cell
+                fire_start_date TEXT,
+                fire_end_date TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                
+                PRIMARY KEY (cell_id, fire_id),
+                FOREIGN KEY (cell_id) REFERENCES grid_cells(cell_id),
+                FOREIGN KEY (fire_id) REFERENCES fire_events(fire_id)
             )
         ''')
         
@@ -1079,24 +1097,12 @@ class ParallelSafeInterpolatedGridCreator:
         return weather_records
     
     def _assign_wildfires_smart(self) -> int:
-        """Complete wildfire assignment - create records for ALL cell-date combinations"""
-        log_progress("Starting complete wildfire assignment...")
+        """Improved wildfire assignment - realistic fire size-based assignment"""
+        log_progress("Starting improved wildfire assignment...")
         start_time = time.time()
         
         raw_conn = sqlite3.connect(self.raw_db_path)
         grid_conn = sqlite3.connect(self.output_db_path)
-        
-        # Get all grid cells and dates from weather data
-        log_progress("Loading grid cells and date range from weather data...")
-        weather_info = pd.read_sql_query('''
-            SELECT DISTINCT cell_id, date 
-            FROM weather_data 
-            ORDER BY cell_id, date
-        ''', grid_conn)
-        
-        if len(weather_info) == 0:
-            log_progress("No weather data found")
-            return 0
         
         # Get wildfires
         log_progress("Loading wildfire data from database...")
@@ -1112,18 +1118,19 @@ class ParallelSafeInterpolatedGridCreator:
             grid_conn
         )
         
-        log_progress(f"Creating wildfire records for {len(weather_info):,} cell-date combinations")
         log_progress(f"Processing {len(wildfires_df):,} fires for {len(cells_df):,} cells")
         
-        # Create a lookup for fire events by cell-date
-        fire_events = {}
-        max_distance = 50  # km - maximum distance for fire assignment
+        # Convert cell coordinates to numpy array for vectorized operations
+        cell_coords = cells_df[['center_lat', 'center_lon']].values
+        cell_ids = cells_df['cell_id'].values
+        
+        # Create lookup for cell_id to index mapping
+        cell_id_to_index = {cell_id: idx for idx, cell_id in enumerate(cell_ids)}
+        
+        fire_events = []
+        cell_fire_relationships = []
         
         if len(wildfires_df) > 0:
-            # Convert cell coordinates to numpy array for vectorized operations
-            cell_coords = cells_df[['center_lat', 'center_lon']].values
-            cell_ids = cells_df['cell_id'].values
-            
             # Pre-filter fires by spatial bounds to reduce processing
             log_progress("Pre-filtering fires by spatial bounds...")
             lat_min, lat_max = cell_coords[:, 0].min() - 1, cell_coords[:, 0].max() + 1
@@ -1152,8 +1159,8 @@ class ParallelSafeInterpolatedGridCreator:
                 for fire_idx, (_, fire) in enumerate(batch_fires.iterrows()):
                     processed_fires += 1
                     
-                    # Parse dates
                     try:
+                        # Parse dates
                         start_date = pd.to_datetime(fire['REP_DATE'])
                         
                         # Handle end date
@@ -1162,49 +1169,55 @@ class ParallelSafeInterpolatedGridCreator:
                         else:
                             end_date = start_date  # Single day fire
                         
-                        # Create date range
-                        date_range = pd.date_range(start=start_date, end=end_date, freq='D')
+                        # Calculate realistic fire radius based on size
+                        fire_size_ha = fire['SIZE_HA'] if fire['SIZE_HA'] and fire['SIZE_HA'] > 0 else 1.0
+                        fire_radius_km = min(math.sqrt(fire_size_ha / math.pi) / 10, 20.0)  # Cap at 20km
                         
-                        # Find nearby cells using vectorized operations
+                        # Find center cell (closest to fire coordinates)
                         fire_lat, fire_lon = fire['LATITUDE'], fire['LONGITUDE']
                         
-                        # Quick bounding box filter first (much faster)
-                        lat_diff = np.abs(cell_coords[:, 0] - fire_lat)
-                        lon_diff = np.abs(cell_coords[:, 1] - fire_lon)
+                        # Calculate distances to all cells
+                        distances = np.array([
+                            self.haversine_distance(fire_lat, fire_lon, cell_lat, cell_lon)
+                            for cell_lat, cell_lon in cell_coords
+                        ])
                         
-                        # Only calculate haversine for cells within reasonable bounds
-                        candidate_mask = (lat_diff <= 0.5) & (lon_diff <= 0.5)  # ~50km threshold
-                        candidate_indices = np.where(candidate_mask)[0]
+                        # Find cells within realistic fire radius
+                        affected_mask = distances <= fire_radius_km
+                        affected_cells = cells_df[affected_mask]
                         
-                        if len(candidate_indices) == 0:
-                            continue  # No nearby cells
+                        if len(affected_cells) == 0:
+                            continue  # No cells affected
                         
-                        # Calculate precise distances only for candidates
-                        distances = np.full(len(cell_coords), np.inf)
-                        for i in candidate_indices:
-                            cell_lat, cell_lon = cell_coords[i]
-                            distances[i] = self.haversine_distance(fire_lat, fire_lon, cell_lat, cell_lon)
+                        # Find center cell (closest to fire)
+                        center_cell_idx = np.argmin(distances)
+                        center_cell_id = cell_ids[center_cell_idx]
                         
-                        nearby_mask = distances <= max_distance
-                        nearby_cells = cells_df[nearby_mask]
+                        # Create fire event record
+                        fire_event = {
+                            'fire_id': fire['NFDBFIREID'],
+                            'center_cell_id': center_cell_id,
+                            'start_date': start_date.strftime('%Y-%m-%d'),
+                            'end_date': end_date.strftime('%Y-%m-%d'),
+                            'total_size_ha': fire_size_ha,
+                            'fire_type': fire['FIRE_TYPE'] or 'Unknown',
+                            'latitude': fire_lat,
+                            'longitude': fire_lon,
+                            'affected_cells': json.dumps(affected_cells['cell_id'].tolist())
+                        }
+                        fire_events.append(fire_event)
                         
-                        if len(nearby_cells) == 0:
-                            continue
-                        
-                        # Calculate fire size per cell
-                        fire_size_per_cell = fire['SIZE_HA'] / len(nearby_cells) if fire['SIZE_HA'] else 0
-                        
-                        # Store fire events for each cell and each day
-                        for _, cell in nearby_cells.iterrows():
-                            for date in date_range:
-                                date_str = date.strftime('%Y-%m-%d')
-                                key = (cell['cell_id'], date_str)
-                                fire_events[key] = {
-                                    'fire_occurred': 1,
-                                    'fire_size_ha': fire_size_per_cell,
-                                    'fire_type': fire['FIRE_TYPE'] or 'Unknown',
-                                    'fire_id': fire['NFDBFIREID']
-                                }
+                        # Create cell-fire relationships
+                        fire_size_per_cell = fire_size_ha / len(affected_cells)
+                        for _, cell in affected_cells.iterrows():
+                            cell_fire_rel = {
+                                'cell_id': cell['cell_id'],
+                                'fire_id': fire['NFDBFIREID'],
+                                'fire_size_ha': fire_size_per_cell,
+                                'fire_start_date': start_date.strftime('%Y-%m-%d'),
+                                'fire_end_date': end_date.strftime('%Y-%m-%d')
+                            }
+                            cell_fire_relationships.append(cell_fire_rel)
                     
                     except Exception as e:
                         log_progress(f"Error processing fire {fire['NFDBFIREID']}: {e}")
@@ -1217,59 +1230,36 @@ class ParallelSafeInterpolatedGridCreator:
                     rate = processed_fires / elapsed_time if elapsed_time > 0 else 0
                     log_progress(f"Fire progress: {processed_fires:,}/{total_fires:,} fires ({progress_percent:.1f}%) - {len(fire_events):,} fire events - {rate:,.0f} fires/s")
         
-        # Step 1: Save actual fire events (already processed)
-        log_progress("Saving actual fire events to database...")
+        # Save fire events to database
+        log_progress("Saving fire events to database...")
         if fire_events:
-            fire_records = []
-            for (cell_id, date), event in fire_events.items():
-                fire_records.append({
-                    'cell_id': cell_id,
-                    'date': date,
-                    'fire_occurred': event['fire_occurred'],
-                    'fire_size_ha': event['fire_size_ha'],
-                    'fire_type': event['fire_type'],
-                    'fire_id': event['fire_id']
-                })
-            
-            fire_df = pd.DataFrame(fire_records)
-            fire_df.to_sql('wildfire_data', grid_conn, if_exists='append', index=False)
-            log_progress(f"Saved {len(fire_records):,} actual fire records to database")
+            fire_events_df = pd.DataFrame(fire_events)
+            fire_events_df.to_sql('fire_events', grid_conn, if_exists='append', index=False)
+            log_progress(f"Saved {len(fire_events):,} fire events to database")
         
-        # Step 2: Fill missing records with no-fire data (FAST SQL approach)
-        log_progress("Filling missing records with no-fire data...")
+        # Save cell-fire relationships to database
+        log_progress("Saving cell-fire relationships to database...")
+        if cell_fire_relationships:
+            cell_fire_df = pd.DataFrame(cell_fire_relationships)
+            cell_fire_df.to_sql('cell_fire_relationships', grid_conn, if_exists='append', index=False)
+            log_progress(f"Saved {len(cell_fire_relationships):,} cell-fire relationships to database")
+        
+        # Get total counts
         cursor = grid_conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM fire_events")
+        fire_events_count = cursor.fetchone()[0]
         
-        # Insert no-fire records for all cell-date combinations that don't have fire data
-        cursor.execute('''
-            INSERT INTO wildfire_data (cell_id, date, fire_occurred, fire_size_ha, fire_type, fire_id)
-            SELECT 
-                w.cell_id, 
-                w.date, 
-                0 as fire_occurred, 
-                0.0 as fire_size_ha, 
-                NULL as fire_type,
-                NULL as fire_id
-            FROM weather_data w
-            LEFT JOIN wildfire_data wf ON w.cell_id = wf.cell_id AND w.date = wf.date
-            WHERE wf.cell_id IS NULL
-        ''')
+        cursor.execute("SELECT COUNT(*) FROM cell_fire_relationships")
+        relationships_count = cursor.fetchone()[0]
         
-        no_fire_count = cursor.rowcount
         grid_conn.commit()
-        log_progress(f"Added {no_fire_count:,} no-fire records to database")
-        
-        # Get total count
-        cursor.execute("SELECT COUNT(*) FROM wildfire_data")
-        total_records = cursor.fetchone()[0]
-        log_progress(f"Total wildfire records: {total_records:,}")
-        
         raw_conn.close()
         grid_conn.close()
         
         processing_time = time.time() - start_time
-        log_progress(f"Complete wildfire assignment finished: {total_records:,} records in {processing_time:.1f}s")
+        log_progress(f"Improved wildfire assignment finished: {fire_events_count:,} fire events, {relationships_count:,} cell relationships in {processing_time:.1f}s")
         
-        return total_records
+        return fire_events_count
     
     
     def _create_optimized_indexes(self):
@@ -1284,9 +1274,11 @@ class ParallelSafeInterpolatedGridCreator:
             "CREATE INDEX IF NOT EXISTS idx_weather_cell_date ON weather_data(cell_id, date)",
             "CREATE INDEX IF NOT EXISTS idx_weather_date ON weather_data(date)",
             "CREATE INDEX IF NOT EXISTS idx_weather_season ON weather_data(season)",
-            "CREATE INDEX IF NOT EXISTS idx_wildfire_cell_date ON wildfire_data(cell_id, date)",
-            "CREATE INDEX IF NOT EXISTS idx_wildfire_date ON wildfire_data(date)",
-            "CREATE INDEX IF NOT EXISTS idx_wildfire_occurred ON wildfire_data(fire_occurred)"
+            "CREATE INDEX IF NOT EXISTS idx_fire_events_center_cell ON fire_events(center_cell_id)",
+            "CREATE INDEX IF NOT EXISTS idx_fire_events_date ON fire_events(start_date, end_date)",
+            "CREATE INDEX IF NOT EXISTS idx_cell_fire_cell_id ON cell_fire_relationships(cell_id)",
+            "CREATE INDEX IF NOT EXISTS idx_cell_fire_fire_id ON cell_fire_relationships(fire_id)",
+            "CREATE INDEX IF NOT EXISTS idx_cell_fire_dates ON cell_fire_relationships(fire_start_date, fire_end_date)"
         ]
         
         for index_sql in indexes:
@@ -1321,12 +1313,20 @@ class ParallelSafeInterpolatedGridCreator:
             FROM weather_data
         """, conn)
         
-        # Wildfire statistics
-        wildfire_stats = pd.read_sql_query("""
+        # Fire events statistics
+        fire_events_stats = pd.read_sql_query("""
             SELECT 
-                COUNT(*) as total_records,
-                SUM(fire_occurred) as fire_records
-            FROM wildfire_data
+                COUNT(*) as total_fire_events,
+                SUM(total_size_ha) as total_fire_area_ha
+            FROM fire_events
+        """, conn)
+        
+        # Cell-fire relationships statistics
+        cell_fire_stats = pd.read_sql_query("""
+            SELECT 
+                COUNT(*) as total_cell_fire_relationships,
+                COUNT(DISTINCT cell_id) as cells_with_fires
+            FROM cell_fire_relationships
         """, conn)
         
         conn.close()
@@ -1341,13 +1341,21 @@ class ParallelSafeInterpolatedGridCreator:
         logger.info(f"      Unique cells: {weather_stats['unique_cells'].iloc[0]:,}")
         logger.info(f"      Date range: {weather_stats['earliest_date'].iloc[0]} to {weather_stats['latest_date'].iloc[0]}")
         
-        logger.info("   Wildfire data:")
-        logger.info(f"      Total records: {wildfire_stats['total_records'].iloc[0]:,}")
-        fire_records = wildfire_stats['fire_records'].iloc[0]
-        if fire_records is not None:
-            logger.info(f"      Fire records: {fire_records:,}")
+        logger.info("   Fire events:")
+        logger.info(f"      Total fire events: {fire_events_stats['total_fire_events'].iloc[0]:,}")
+        total_area = fire_events_stats['total_fire_area_ha'].iloc[0]
+        if total_area is not None:
+            logger.info(f"      Total fire area: {total_area:,.1f} hectares")
         else:
-            logger.info(f"      Fire records: 0")
+            logger.info(f"      Total fire area: 0 hectares")
+        
+        logger.info("   Cell-fire relationships:")
+        logger.info(f"      Total relationships: {cell_fire_stats['total_cell_fire_relationships'].iloc[0]:,}")
+        cells_with_fires = cell_fire_stats['cells_with_fires'].iloc[0]
+        if cells_with_fires is not None:
+            logger.info(f"      Cells with fires: {cells_with_fires:,}")
+        else:
+            logger.info(f"      Cells with fires: 0")
 
 def main():
     parser = argparse.ArgumentParser(description='Create memory-safe parallel interpolated grid database')
