@@ -1,0 +1,19 @@
+# Historical Data Collection Requirements
+requests>=2.31.0
+pathlib  # Built-in Python module
+tarfile  # Built-in Python module
+subprocess  # Built-in Python module
+shutil  # Built-in Python module
+logging  # Built-in Python module
+datetime  # Built-in Python module
+tempfile  # Built-in Python module
+
+# AI Training Requirements (Stage 6)
+pandas>=1.5.0
+numpy>=1.21.0
+scikit-learn>=1.1.0
+xgboost>=1.6.0
+
+# System requirements:
+# - wget (for FTP downloads)
+# - tar/gzip (for extraction)

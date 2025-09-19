@@ -202,6 +202,12 @@ data/models/*.pkl
 data/models/*.h5
 data/models/*.joblib
 
+# Production data files (too large for git)
+production/data/raw_data/historical_noaa_data/canadian_stations/*.dly
+production/data/raw_data/wildfire_data/final_csv/*.csv
+production/data/validated_data/*.csv
+production/databases/*.db
+
 # Keep data directory structure
 !data/raw/.gitkeep
 !data/processed/.gitkeep
