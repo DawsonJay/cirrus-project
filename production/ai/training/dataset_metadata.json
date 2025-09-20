@@ -1,0 +1,53 @@
+{
+  "generation_date": "2025-09-20T00:28:17.412540",
+  "training_samples": 4750,
+  "test_samples": 9500,
+  "features": [
+    "cell_id",
+    "target_date",
+    "terrain_type",
+    "fire_occurred",
+    "year_1_avg_temp",
+    "year_1_max_temp",
+    "year_1_total_precip",
+    "year_1_dry_days",
+    "year_1_fire_occurred",
+    "year_2_avg_temp",
+    "year_2_max_temp",
+    "year_2_total_precip",
+    "year_2_dry_days",
+    "year_2_fire_occurred",
+    "year_3_avg_temp",
+    "year_3_max_temp",
+    "year_3_total_precip",
+    "year_3_dry_days",
+    "year_3_fire_occurred",
+    "avg_temp_trend",
+    "fire_frequency",
+    "avg_fire_size",
+    "neighbor_avg_temp",
+    "neighbor_max_temp",
+    "neighbor_total_precip",
+    "neighbor_dry_days",
+    "neighbor_fire_frequency",
+    "neighbor_terrain_types",
+    "terrain_type_encoded",
+    "area_km2",
+    "historical_fire_frequency",
+    "elevation",
+    "is_water",
+    "urban_flag",
+    "elevation_m",
+    "distance_to_urban_km"
+  ],
+  "terrain_distribution": {
+    "forest": 2000,
+    "land": 1250,
+    "urban": 1000,
+    "water": 500
+  },
+  "fire_distribution": {
+    "0.0": 4514,
+    "1.0": 236
+  }
+}

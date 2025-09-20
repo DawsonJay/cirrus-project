@@ -1234,15 +1234,19 @@ class ParallelSafeInterpolatedGridCreator:
         log_progress("Saving fire events to database...")
         if fire_events:
             fire_events_df = pd.DataFrame(fire_events)
+            # Remove duplicates based on fire_id (keep first occurrence)
+            fire_events_df = fire_events_df.drop_duplicates(subset=['fire_id'], keep='first')
             fire_events_df.to_sql('fire_events', grid_conn, if_exists='append', index=False)
-            log_progress(f"Saved {len(fire_events):,} fire events to database")
+            log_progress(f"Saved {len(fire_events_df):,} fire events to database")
         
         # Save cell-fire relationships to database
         log_progress("Saving cell-fire relationships to database...")
         if cell_fire_relationships:
             cell_fire_df = pd.DataFrame(cell_fire_relationships)
+            # Remove duplicates based on cell_id, fire_id combination (keep first occurrence)
+            cell_fire_df = cell_fire_df.drop_duplicates(subset=['cell_id', 'fire_id'], keep='first')
             cell_fire_df.to_sql('cell_fire_relationships', grid_conn, if_exists='append', index=False)
-            log_progress(f"Saved {len(cell_fire_relationships):,} cell-fire relationships to database")
+            log_progress(f"Saved {len(cell_fire_df):,} cell-fire relationships to database")
         
         # Get total counts
         cursor = grid_conn.cursor()
